@@ -76,6 +76,3 @@ bash <(curl -Ls https://raw.githubusercontent.com/OFLordRtx/IPtctl/HEAD/iptctl.s
 - 🐛 有 bug：提 issue（最好带系统版本、iptables 版本、复现步骤/截图）
 - ✨ 想加功能：提 issue 讨论，或者直接提 PR（Pull Request）
 - 我会尽量自己测试后再合并
-
-## License
-MIT License. See `LICENSE` for details.
