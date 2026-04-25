@@ -120,15 +120,15 @@ ui_style_maybe_prompt() {
   [[ "$UI_STYLE_PROMPT" == "off" ]] && return 0
   [[ -f "$CONFIG_FILE" ]] && return 0
 
-  say "$LINE"
+  bi "$LINE"
   bi "[显示/Display] 你的终端可能不支持 emoji（SSH 常见）。要切换显示风格吗？"
   bi "[提示/Tip] 你之后也可以用环境变量强制：UI_STYLE=text 或 UI_STYLE=emoji"
-  say ""
+  bi ""
   bi "  1) 自动 (auto)   - 根据 UTF-8/TERM 估计选择"
   bi "  2) Emoji (emoji) - 保留图标"
   bi "  3) 文本 (text)   - 用 [固化/PERSIST] 这类中英标记"
   bi "  0) 跳过（保持默认 auto）"
-  say ""
+  bi ""
   local c
   c="$(read_num "选择 / Choose: ")"
   case "$c" in
@@ -139,7 +139,7 @@ ui_style_maybe_prompt() {
     *) bi "无效输入 / Invalid，保持默认 auto"; UI_STYLE="auto" ;;
   esac
 
-  say ""
+  bi ""
   bi "是否记住并不再提示？/ Remember and don't ask again?"
   bi "  1) 是 / Yes（写入配置）"
   bi "  2) 否 / No（仅本次生效）"
@@ -217,14 +217,14 @@ exit_retention_prompt() {
     return 0
   fi
 
-  say "$LINE"
+  bi "$LINE"
   bi "[退出/Exit] 本次运行产生了备份文件（用于回滚）。退出时要保留吗？"
   bi "生成数量/Count: ${#SESSION_BACKUP_FILES[@]}"
-  say ""
+  bi ""
   bi "  1) 保留 / Keep (推荐)"
   bi "  2) 删除本次备份 / Cleanup (仅删除本次生成的备份文件)"
   bi "  0) 取消退出 / Cancel exit"
-  say ""
+  bi ""
   local c
   c="$(read_num "选择 / Choose: ")"
   case "$c" in
@@ -234,7 +234,7 @@ exit_retention_prompt() {
     *) bi "无效输入 / Invalid，默认保留"; EXIT_FILE_POLICY="keep" ;;
   esac
 
-  say ""
+  bi ""
   bi "是否记住并不再提示？/ Remember and don't ask again?"
   bi "  1) 是 / Yes（写入配置）"
   bi "  2) 否 / No（仅本次生效）"
@@ -267,8 +267,7 @@ iptctl_exit() {
   exit "$code"
 }
 
-say(){ ui_translate_line "$*"; }
-bi(){  ui_translate_line "$*"; }
+bi(){ ui_translate_line "$*"; }
 LINE="────────────────────────────────────────────────────────────"
 
 # ---- sudo detection (portable)
@@ -282,7 +281,7 @@ if [[ "${EUID:-99999}" -ne 0 ]]; then
 fi
 
 pause() {
-  say ""
+  bi ""
   read -r -p "[ENTER] 回车返回 / Press Enter to continue... " _ || true
 }
 
@@ -339,10 +338,10 @@ run_action() {
   local title="$1"; shift
   local rc=0
 
-  say ""
-  say "$LINE"
+  bi ""
+  bi "$LINE"
   bi "[RUN] ${title}"
-  say "$LINE"
+  bi "$LINE"
 
   "$@" || rc=$?
 
@@ -352,7 +351,7 @@ run_action() {
   fi
 
   if (( rc != 0 )); then
-    say ""
+    bi ""
     bi "[FAIL] 操作失败 / Action failed"
     bi "   标题 / Title : ${title}"
     bi "   返回码 / Exit code : ${rc}"
@@ -447,15 +446,15 @@ ipt_save_cmd_for() {
   [[ "$fam" == "4" ]] && base="iptables-save" || base="ip6tables-save"
 
   if [[ "$BACKEND" == "legacy" ]]; then
-    cmd_exists "${base}-legacy" && "${base}-legacy" --help >/dev/null 2>&1 && printf "%s\n" "${base}-legacy" && return 0
+    cmd_exists "${base}-legacy" && printf "%s\n" "${base}-legacy" && return 0
   fi
   if [[ "$BACKEND" == "nft" ]]; then
-    cmd_exists "${base}-nft" && "${base}-nft" --help >/dev/null 2>&1 && printf "%s\n" "${base}-nft" && return 0
+    cmd_exists "${base}-nft" && printf "%s\n" "${base}-nft" && return 0
   fi
 
-  cmd_exists "$base" && "$base" --help >/dev/null 2>&1 && printf "%s\n" "$base" && return 0
-  cmd_exists "${base}-nft" && "${base}-nft" --help >/dev/null 2>&1 && printf "%s\n" "${base}-nft" && return 0
-  cmd_exists "${base}-legacy" && "${base}-legacy" --help >/dev/null 2>&1 && printf "%s\n" "${base}-legacy" && return 0
+  cmd_exists "$base" && printf "%s\n" "$base" && return 0
+  cmd_exists "${base}-nft" && printf "%s\n" "${base}-nft" && return 0
+  cmd_exists "${base}-legacy" && printf "%s\n" "${base}-legacy" && return 0
   return 1
 }
 
@@ -464,15 +463,15 @@ ipt_restore_cmd_for() {
   [[ "$fam" == "4" ]] && base="iptables-restore" || base="ip6tables-restore"
 
   if [[ "$BACKEND" == "legacy" ]]; then
-    cmd_exists "${base}-legacy" && "${base}-legacy" --help >/dev/null 2>&1 && printf "%s\n" "${base}-legacy" && return 0
+    cmd_exists "${base}-legacy" && printf "%s\n" "${base}-legacy" && return 0
   fi
   if [[ "$BACKEND" == "nft" ]]; then
-    cmd_exists "${base}-nft" && "${base}-nft" --help >/dev/null 2>&1 && printf "%s\n" "${base}-nft" && return 0
+    cmd_exists "${base}-nft" && printf "%s\n" "${base}-nft" && return 0
   fi
 
-  cmd_exists "$base" && "$base" --help >/dev/null 2>&1 && printf "%s\n" "$base" && return 0
-  cmd_exists "${base}-nft" && "${base}-nft" --help >/dev/null 2>&1 && printf "%s\n" "${base}-nft" && return 0
-  cmd_exists "${base}-legacy" && "${base}-legacy" --help >/dev/null 2>&1 && printf "%s\n" "${base}-legacy" && return 0
+  cmd_exists "$base" && printf "%s\n" "$base" && return 0
+  cmd_exists "${base}-nft" && printf "%s\n" "${base}-nft" && return 0
+  cmd_exists "${base}-legacy" && printf "%s\n" "${base}-legacy" && return 0
   return 1
 }
 run_ipt() {
@@ -647,10 +646,9 @@ do_backup() {
 
     if backup_write_file "$fam" "$f"; then
       bi "[OK] 已备份 / Saved: $f"
-    
       SESSION_BACKUP_FILES+=("$f")
       SESSION_BACKUP_DIRS["$dir"]=1
-else
+    else
       bi "[FAIL] 备份失败 / Backup failed: $f"
       ok=0
     fi
@@ -674,12 +672,12 @@ confirm_add_rule() {
   local desc="$1"
   [[ "$ADD_PROMPT" == "off" ]] && return 0
 
-  say ""
-  say "$LINE"
+  bi ""
+  bi "$LINE"
   bi "[BACKEND] 准备添加规则 / About to add rule"
   bi "   ${desc}"
   bi "   TABLE=${TABLE}  CHAIN=${CHAIN}  IP_MODE=${IP_MODE}  BACKEND=${BACKEND}"
-  say "$LINE"
+  bi "$LINE"
   bi "  1) 添加 / Add"
   bi "  2) 取消 / Cancel"
   bi "  3) 添加并以后不再提示（需要再确认一次）"
@@ -708,17 +706,17 @@ destructive_guard() {
   local count="$1"; shift
   local fams=("$@")
 
-  say ""
-  say "$LINE"
+  bi ""
+  bi "$LINE"
   bi "⚠️ 即将执行破坏性操作 / Destructive action"
   bi "   ${desc}"
   bi "   TABLE=${TABLE}  CHAIN=${CHAIN}  BACKEND=${BACKEND}"
   bi "   Families: ${fams[*]}"
-  if [[ "$count" -ge 0 ]]; then
+  if [[ "$count" -gt 0 ]]; then
     bi "   影响规则数(估计) / Count: ${count}"
   fi
-  say "$LINE"
-  say ""
+  bi "$LINE"
+  bi ""
 
   # Expert: ask only about backup (no YES/DELETE phrase confirmations)
   if [[ "${MODE:-}" == "expert" ]]; then
@@ -1081,20 +1079,20 @@ maybe_persist_after_change() {
 
 persist_menu() {
   while true; do
-    say "$LINE"
+    bi "$LINE"
     bi "[PERSIST] 固化/持久化中心 / Persistence center"
     bi "当前 / Current:"
     bi "  PERSIST_AFTER_CHANGE=${PERSIST_AFTER_CHANGE}"
     bi "  PERSIST_METHOD=${PERSIST_METHOD}"
-    say ""
+    bi ""
 
     persist_print_status
-    say ""
+    bi ""
     bi "  1) 设置改动后是否固化 (off / prompt / auto)"
     bi "  2) 选择固化方式 (auto / netfilter-persistent / iptables-services / systemd)"
     bi "  3) 立即固化一次（保存当前规则）"
     bi "  0) 返回"
-    say ""
+    bi ""
 
     local c
     c="$(read_num "选择 / Choose: ")"
@@ -1142,7 +1140,7 @@ persist_menu() {
 
 # 新手专用：固化方式三选一（含默认 auto），且选择后必须 YES 确认应用
 persist_method_quick_pick() {
-  say "$LINE"
+  bi "$LINE"
   bi "[PERSIST] 选择固化方式（三选一/默认）/ Pick persistence method"
   bi "  1) netfilter-persistent (Debian/Ubuntu)"
   bi "  2) iptables-services (RHEL 系)"
@@ -1173,7 +1171,7 @@ persist_method_quick_pick() {
 # UI selections
 ###############################################################################
 select_ip_mode() {
-  say "$LINE"
+  bi "$LINE"
   bi "[IP] 选择 IP 管理范围 / Choose IP scope"
   bi "  1) 仅 IPv4"
   bi "  2) 仅 IPv6"
@@ -1191,7 +1189,7 @@ select_ip_mode() {
 }
 
 select_backend() {
-  say "$LINE"
+  bi "$LINE"
   bi "[BACKEND] 选择 backend / Choose backend"
   bi "  1) auto"
   bi "  2) nft"
@@ -1209,7 +1207,7 @@ select_backend() {
 }
 
 select_table() {
-  say "$LINE"
+  bi "$LINE"
   bi "[TABLE] 选择 table / Choose table"
   bi "  1) filter"
   bi "  2) nat"
@@ -1231,7 +1229,7 @@ select_table() {
 }
 
 select_chain() {
-  say "$LINE"
+  bi "$LINE"
   bi "[CHAIN] 输入 chain 名称 / Enter chain name"
   bi "常见：INPUT / OUTPUT / FORWARD / PREROUTING / POSTROUTING"
   local c
@@ -1243,13 +1241,13 @@ select_chain() {
 # Actions
 ###############################################################################
 env_check() {
-  say "PATH=$PATH"
-  say ""
+  bi "PATH=$PATH"
+  bi ""
   bi "IPv4: $(ipt_cmd_for 4 2>/dev/null || echo 'NOT FOUND')"
   bi "IPv6: $(ipt_cmd_for 6 2>/dev/null || echo 'NOT FOUND')"
-  say ""
+  bi ""
   bi "Current: IP_MODE=${IP_MODE} BACKEND=${BACKEND} TABLE=${TABLE} CHAIN=${CHAIN}"
-  say ""
+  bi ""
   if ! ipt_cmd_for 4 >/dev/null 2>&1; then
     bi "[FAIL] 未检测到 iptables 可执行文件。"
     bi "   请先安装 iptables（发行版方式不同），安装后再运行本脚本。"
@@ -1261,6 +1259,36 @@ env_check() {
 list_rules_L() { run_ipt_scope -L "$CHAIN" -n -v --line-numbers; }
 list_rules_S() { run_ipt_scope -S "$CHAIN"; }
 
+# pick_families <fams_varname> <scope_varname> [dual_stack_warn]
+# Fills the named array and string based on current IP_MODE.
+# Returns 2 if the user cancels (dual-stack interactive prompt only).
+pick_families() {
+  local -n _pf_fams="$1"
+  local -n _pf_scope="$2"
+  local warn_msg="${3:-}"
+
+  if [[ "$IP_MODE" == "46" ]]; then
+    [[ -n "$warn_msg" ]] && bi "[WARN] ${warn_msg}"
+    bi "选择操作范围 / Choose family:"
+    bi "  1) 仅 IPv4"
+    bi "  2) 仅 IPv6"
+    bi "  3) IPv4 + IPv6"
+    bi "  0) 取消"
+    local _pf_c
+    _pf_c="$(read_num "选择 / Choose: ")"
+    case "$_pf_c" in
+      1) _pf_fams=("4"); _pf_scope="IPv4" ;;
+      2) _pf_fams=("6"); _pf_scope="IPv6" ;;
+      3) _pf_fams=("4" "6"); _pf_scope="IPv4+IPv6" ;;
+      *) bi "已取消 / Cancelled"; return 2 ;;
+    esac
+  elif [[ "$IP_MODE" == "4" ]]; then
+    _pf_fams=("4"); _pf_scope="IPv4"
+  else
+    _pf_fams=("6"); _pf_scope="IPv6"
+  fi
+}
+
 delete_rule_by_num() {
   local n=""
   n="$(read_num "输入要删除的规则编号 / Rule number to delete: ")"
@@ -1268,27 +1296,7 @@ delete_rule_by_num() {
 
   local fams=()
   local scope_desc=""
-
-  if [[ "$IP_MODE" == "46" ]]; then
-    bi "[WARN] 双栈模式：IPv4/IPv6 的编号可能不一致，建议分别查看后删除。"
-    bi "选择删除范围 / Choose family:"
-    bi "  1) 仅 IPv4"
-    bi "  2) 仅 IPv6"
-    bi "  3) IPv4 + IPv6"
-    bi "  0) 取消"
-    local c
-    c="$(read_num "选择 / Choose: ")"
-    case "$c" in
-      1) fams=("4"); scope_desc="IPv4";;
-      2) fams=("6"); scope_desc="IPv6";;
-      3) fams=("4" "6"); scope_desc="IPv4+IPv6";;
-      *) bi "已取消 / Cancelled"; return 2 ;;
-    esac
-  elif [[ "$IP_MODE" == "4" ]]; then
-    fams=("4"); scope_desc="IPv4"
-  else
-    fams=("6"); scope_desc="IPv6"
-  fi
+  pick_families fams scope_desc "双栈模式：IPv4/IPv6 的编号可能不一致，建议分别查看后删除。" || return $?
 
   destructive_guard "删除规则编号 #${n} (${scope_desc})" 1 "${fams[@]}" || return $?
 
@@ -1361,26 +1369,7 @@ delete_rules_bulk() {
 
   local fams=()
   local scope_desc=""
-  if [[ "$IP_MODE" == "46" ]]; then
-    bi "[WARN] 双栈模式：建议分别查看 IPv4/IPv6 编号后再批量删。"
-    bi "选择删除范围 / Choose family:"
-    bi "  1) 仅 IPv4"
-    bi "  2) 仅 IPv6"
-    bi "  3) IPv4 + IPv6"
-    bi "  0) 取消"
-    local c
-    c="$(read_num "选择 / Choose: ")"
-    case "$c" in
-      1) fams=("4"); scope_desc="IPv4";;
-      2) fams=("6"); scope_desc="IPv6";;
-      3) fams=("4" "6"); scope_desc="IPv4+IPv6";;
-      *) bi "已取消 / Cancelled"; return 2 ;;
-    esac
-  elif [[ "$IP_MODE" == "4" ]]; then
-    fams=("4"); scope_desc="IPv4"
-  else
-    fams=("6"); scope_desc="IPv6"
-  fi
+  pick_families fams scope_desc "双栈模式：建议分别查看 IPv4/IPv6 编号后再批量删。" || return $?
 
   local nums=()
   local n
@@ -1410,26 +1399,7 @@ delete_rules_bulk() {
 flush_chain() {
   local fams=()
   local scope_desc=""
-
-  if [[ "$IP_MODE" == "46" ]]; then
-    bi "选择清空范围 / Choose family:"
-    bi "  1) 仅 IPv4"
-    bi "  2) 仅 IPv6"
-    bi "  3) IPv4 + IPv6"
-    bi "  0) 取消"
-    local c
-    c="$(read_num "选择 / Choose: ")"
-    case "$c" in
-      1) fams=("4"); scope_desc="IPv4";;
-      2) fams=("6"); scope_desc="IPv6";;
-      3) fams=("4" "6"); scope_desc="IPv4+IPv6";;
-      *) bi "已取消 / Cancelled"; return 2 ;;
-    esac
-  elif [[ "$IP_MODE" == "4" ]]; then
-    fams=("4"); scope_desc="IPv4"
-  else
-    fams=("6"); scope_desc="IPv6"
-  fi
+  pick_families fams scope_desc || return $?
 
   destructive_guard "清空链 -F ${CHAIN} (${scope_desc})" "${BULK_CONFIRM_THRESHOLD}" "${fams[@]}" || return $?
 
@@ -1460,11 +1430,31 @@ raw_exec() {
   run_ipt_scope "${arr[@]}"
 }
 
+# wizard_run_for_family <fam> <base_array_varname> [rule-spec...]
+# Runs iptables for one family using the provided base array (op + chain + pos + src).
+wizard_run_for_family() {
+  local fam="$1"
+  local -n _wrf_base="$2"
+  shift 2
+  if [[ "$fam" == "4" ]]; then
+    run_ipt 4 "${_wrf_base[@]}" "$@" || return 1
+    bi "[OK] IPv4 OK"
+  else
+    if ipt_cmd_for 6 >/dev/null 2>&1; then
+      run_ipt 6 "${_wrf_base[@]}" "$@" || return 1
+      bi "[OK] IPv6 OK"
+    else
+      bi "[WARN] 未检测到 ip6tables，跳过 IPv6"
+    fi
+  fi
+  return 0
+}
+
 add_rule_wizard() {
-  say "$LINE"
+  bi "$LINE"
   bi "[WIZARD] 添加规则（模板向导）/ Add rule (wizard)"
   bi "当前：TABLE=${TABLE} CHAIN=${CHAIN} IP_MODE=${IP_MODE} BACKEND=${BACKEND}"
-  say ""
+  bi ""
   bi "  1) 允许已建立连接 (ESTABLISHED,RELATED) -> ACCEPT"
   bi "  2) 放行 TCP 端口 -> ACCEPT"
   bi "  3) 放行 UDP 端口 -> ACCEPT"
@@ -1472,13 +1462,13 @@ add_rule_wizard() {
   bi "  5) 丢弃 UDP 端口 -> DROP"
   bi "  6) 丢弃所有流量 -> DROP（危险：慎用）"
   bi "  0) 返回"
-  say ""
+  bi ""
 
   local t
   t="$(read_num "选择模板 / Choose template: ")"
   [[ -z "$t" || "$t" == "0" ]] && return 0
 
-  say ""
+  bi ""
   bi "规则放置位置 / Placement"
   bi "  1) 插入到链首 (更优先) / Insert at top"
   bi "  2) 追加到链尾 (更后匹配) / Append at end"
@@ -1494,7 +1484,7 @@ add_rule_wizard() {
     op="-A"
   fi
 
-  say ""
+  bi ""
   local src4="" src6=""
   if [[ "$IP_MODE" == "46" ]]; then
     bi "来源地址 / Source（双栈分别输入，留空=任意）"
@@ -1517,33 +1507,17 @@ add_rule_wizard() {
   [[ -n "$src6" ]] && base6+=("-s" "$src6")
 
   local rc=0
-  run_per_family() {
-    local fam="$1"; shift
-    if [[ "$fam" == "4" ]]; then
-      run_ipt 4 "${base4[@]}" "$@" || return 1
-      bi "[OK] IPv4 OK"
-    else
-      if ipt_cmd_for 6 >/dev/null 2>&1; then
-        run_ipt 6 "${base6[@]}" "$@" || return 1
-        bi "[OK] IPv6 OK"
-      else
-        bi "[WARN] 未检测到 ip6tables，跳过 IPv6"
-      fi
-    fi
-    return 0
-  }
-
   case "$t" in
     1)
       if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-        if ! run_per_family 4 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; then
-          run_per_family 4 -m state --state ESTABLISHED,RELATED -j ACCEPT || rc=1
+        if ! wizard_run_for_family 4 base4 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; then
+          wizard_run_for_family 4 base4 -m state --state ESTABLISHED,RELATED -j ACCEPT || rc=1
         fi
       fi
       if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
         if ipt_cmd_for 6 >/dev/null 2>&1; then
-          if ! run_per_family 6 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; then
-            run_per_family 6 -m state --state ESTABLISHED,RELATED -j ACCEPT || rc=1
+          if ! wizard_run_for_family 6 base6 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT; then
+            wizard_run_for_family 6 base6 -m state --state ESTABLISHED,RELATED -j ACCEPT || rc=1
           fi
         else
           [[ "$IP_MODE" == "6" ]] && rc=1
@@ -1570,11 +1544,11 @@ add_rule_wizard() {
 
       rc=0
       if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-        run_per_family 4 -p "$proto" --dport "$port" -j "$action" || rc=1
+        wizard_run_for_family 4 base4 -p "$proto" --dport "$port" -j "$action" || rc=1
       fi
       if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
         if ipt_cmd_for 6 >/dev/null 2>&1; then
-          run_per_family 6 -p "$proto" --dport "$port" -j "$action" || rc=1
+          wizard_run_for_family 6 base6 -p "$proto" --dport "$port" -j "$action" || rc=1
         else
           [[ "$IP_MODE" == "6" ]] && rc=1
         fi
@@ -1593,11 +1567,11 @@ add_rule_wizard() {
 
       rc=0
       if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-        run_per_family 4 -j DROP || rc=1
+        wizard_run_for_family 4 base4 -j DROP || rc=1
       fi
       if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
         if ipt_cmd_for 6 >/dev/null 2>&1; then
-          run_per_family 6 -j DROP || rc=1
+          wizard_run_for_family 6 base6 -j DROP || rc=1
         else
           [[ "$IP_MODE" == "6" ]] && rc=1
         fi
@@ -1618,37 +1592,38 @@ add_rule_wizard() {
 # MODE selector (三模式入口)
 ###############################################################################
 select_mode() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║                 iptctl · 三模式启动                        ║"
-  say "╚════════════════════════════════════════════════════════════╝"
-  bi "请选择使用模式 / Choose mode:"
-  bi ""
-  bi "  1) 初次接触（新手安全模式）"
-  bi "     - 只提供安全常用操作（看规则/放行端口/基础固化）"
-  bi "     - 默认锁定 filter/INPUT，隐藏删除/清空/原始执行"
-  bi "     - 提供小白说明 + 推荐流程向导"
-  bi ""
-  bi "  2) 熟练使用（完整控制台）"
-  bi "     - 全功能工程向（就是原版）"
-  bi ""
-  bi "  3) 专家模式（手打 + 自动补充 + DSL）"
-  bi "     - REPL 手打参数（支持历史/Tab）"
-  bi "     - 快捷：A/I/D/L/S/F"
-  bi "     - DSL：22/tcp allow、from 1.2.3.4 80,443/tcp allow 等"
-  bi ""
-  bi "  0) 退出 / Exit"
-  bi ""
-  local c
-  c="$(read_num "选择 / Choose: ")"
-  case "$c" in
-    0) iptctl_exit 0 ;;
-    1) MODE="beginner" ;;
-    2) MODE="standard" ;;
-    3) MODE="expert" ;;
-    *) bi "无效输入 / Invalid"; MODE="";;
-  esac
-  [[ -z "$MODE" ]] && select_mode
+  while true; do
+    bi ""
+    bi "╔════════════════════════════════════════════════════════════╗"
+    bi "║                 iptctl · 三模式启动                        ║"
+    bi "╚════════════════════════════════════════════════════════════╝"
+    bi "请选择使用模式 / Choose mode:"
+    bi ""
+    bi "  1) 初次接触（新手安全模式）"
+    bi "     - 只提供安全常用操作（看规则/放行端口/基础固化）"
+    bi "     - 默认锁定 filter/INPUT，隐藏删除/清空/原始执行"
+    bi "     - 提供小白说明 + 推荐流程向导"
+    bi ""
+    bi "  2) 熟练使用（完整控制台）"
+    bi "     - 全功能工程向（就是原版）"
+    bi ""
+    bi "  3) 专家模式（手打 + 自动补充 + DSL）"
+    bi "     - REPL 手打参数（支持历史/Tab）"
+    bi "     - 快捷：A/I/D/L/S/F"
+    bi "     - DSL：22/tcp allow、from 1.2.3.4 80,443/tcp allow 等"
+    bi ""
+    bi "  0) 退出 / Exit"
+    bi ""
+    local c
+    c="$(read_num "选择 / Choose: ")"
+    case "$c" in
+      0) iptctl_exit 0 ;;
+      1) MODE="beginner"; return 0 ;;
+      2) MODE="standard"; return 0 ;;
+      3) MODE="expert";   return 0 ;;
+      *) bi "无效输入 / Invalid" ;;
+    esac
+  done
 }
 
 ###############################################################################
@@ -1660,14 +1635,14 @@ beginner_reset_defaults() {
 }
 
 beginner_help_screen() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║                 iptctl · 新手说明（必读）                 ║"
-  say "╚════════════════════════════════════════════════════════════╝"
+  bi ""
+  bi "╔════════════════════════════════════════════════════════════╗"
+  bi "║                 iptctl · 新手说明（必读）                 ║"
+  bi "╚════════════════════════════════════════════════════════════╝"
   bi "你可以把 iptables 理解成："
   bi "  - 一串“从上到下匹配”的规则"
   bi "  - 匹配到就执行动作（ACCEPT 放行 / DROP 丢弃 / REJECT 拒绝）"
-  say ""
+  bi ""
   bi "本脚本新手模式默认锁定："
   bi "  - TABLE=filter  CHAIN=INPUT（只管入站）"
   bi "  - 目的：不让你误删 NAT/转发/奇怪链导致更大事故"
@@ -1679,20 +1654,20 @@ beginner_help_screen() {
   bi "  - TABLE=filter"
   bi "  - CHAIN=INPUT"
   bi "每次执行完添加/删除规则后会回到 filter/INPUT，避免误切到 nat/FORWARD。"
-  say ""
+  bi ""
   bi "规则顺序非常重要："
   bi "  - 越靠前越先匹配"
   bi "  - 如果前面有 DROP，后面再加 ACCEPT 可能完全没用"
-  say ""
+  bi ""
   bi "最常见的安全组合（推荐）："
   bi "  1) 放行已建立连接（ESTABLISHED,RELATED）——避免已连接会话被误伤"
   bi "  2) 放行你需要的端口（例如 SSH 22/tcp，或你的面板端口）"
   bi "  3) 需要的话再做固化（让规则重启后还在）"
-  say ""
+  bi ""
   bi "固化是什么？"
   bi "  - iptables 默认改的是“内存规则”，重启可能丢"
   bi "  - 固化就是保存到系统机制里（netfilter-persistent / systemd 等）"
-  say ""
+  bi ""
   bi "小白避坑："
   bi "  - 改防火墙前，建议保留一个已登录的 SSH 会话不要关"
   bi "  - 如果你在云服务器上，优先确保放行 SSH 端口，否则可能断连"
@@ -1756,22 +1731,22 @@ beginner_allow_port() {
 beginner_persist_quick() {
   bi "[WARN] 提醒：如果系统启用了 firewalld / nftables.service，可能会覆盖规则。"
   bi "   这不是本脚本的问题，是系统服务优先级/覆盖行为导致。"
-  say ""
+  bi ""
   run_action "立即固化（使用 auto 方式）" persist_apply
 }
 
 beginner_quickstart_wizard() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║              iptctl · 新手推荐流程向导                    ║"
-  say "╚════════════════════════════════════════════════════════════╝"
+  bi ""
+  bi "╔════════════════════════════════════════════════════════════╗"
+  bi "║              iptctl · 新手推荐流程向导                    ║"
+  bi "╚════════════════════════════════════════════════════════════╝"
   bi "它会按推荐顺序做："
   bi "  1) 环境检测"
   bi "  2) 选择 IPv4/IPv6/双栈"
   bi "  3) 放行已建立连接（插入链首）"
   bi "  4) 放行一个 TCP 端口（默认 22）"
   bi "  5) 询问是否固化"
-  say ""
+  bi ""
 
   run_action "环境检测 / Env check" env_check || { pause; return 1; }
   run_action "选择 IP 模式" select_ip_mode
@@ -1785,6 +1760,7 @@ beginner_quickstart_wizard() {
   [[ -z "$p" ]] && p="22"
   valid_port "$p" || { bi "[FAIL] 端口无效 / Invalid port"; pause; return 1; }
 
+  local _rc=0
   confirm_add_rule "放行 TCP 端口 ${p} -> ACCEPT" || { _rc=$?; pause; return $_rc; }
 
   local rc=0
@@ -1814,37 +1790,37 @@ beginner_quickstart_wizard() {
 }
 
 beginner_menu() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║           iptctl · 初次接触（新手安全模式）                ║"
-  say "╚════════════════════════════════════════════════════════════╝"
+  bi ""
+  bi "╔════════════════════════════════════════════════════════════╗"
+  bi "║           iptctl · 初次接触（新手安全模式）                ║"
+  bi "╚════════════════════════════════════════════════════════════╝"
   bi "当前状态 / Current:"
   bi "  MODE=${MODE}"
   bi "  IP_MODE=${IP_MODE}   BACKEND=${BACKEND}"
   bi "  TABLE=${TABLE}   CHAIN=${CHAIN}   (新手模式锁定)"
   bi "  ADD_PROMPT=${ADD_PROMPT}  (添加规则前是否提示)"
   bi "  PERSIST_AFTER_CHANGE=${PERSIST_AFTER_CHANGE}  PERSIST_METHOD=${PERSIST_METHOD}"
-  say ""
+  bi ""
   bi "  1) 环境检测 / Env check"
   bi "  2) 选择 IPv4 / IPv6 / 双栈"
   bi "  3) 选择后端（auto / nft / legacy）/ Select backend (auto / nft / legacy)"
   bi "  4) 新手说明（必读）"
   bi "  5) [OK] 新手推荐流程向导（一步步带你做）"
-  say ""
+  bi ""
   bi "  10) 查看规则 (-L 带编号)"
   bi "  11) 查看规则 (-S 原样)"
-  say ""
+  bi ""
   bi "  20) 放行已建立连接 (ESTABLISHED,RELATED) -> ACCEPT"
   bi "  21) 放行 TCP 端口 -> ACCEPT"
   bi "  22) 放行 UDP 端口 -> ACCEPT"
-  say ""
+  bi ""
   bi "  50) [PERSIST] 固化/持久化中心（完整）"
   bi "  51) [PERSIST] 一键固化（auto）"
   bi "  52) [PERSIST] 选择固化方式（三选一/默认）"
-  say ""
+  bi ""
   bi "  90) 切换模式"
   bi "  0) 退出"
-  say ""
+  bi ""
 }
 
 beginner_loop() {
@@ -1879,7 +1855,7 @@ beginner_loop() {
 # Expert mode (专家 REPL：手打 + 自动补充 + DSL)
 ###############################################################################
 expert_help() {
-  say ""
+  bi ""
   bi "EXPERT 模式帮助："
   bi "  - 你输入的是 iptables 参数（不含 iptables 与 -t），脚本会自动加上 -t ${TABLE}"
   bi "  - 支持历史/Tab（read -e）"
@@ -1910,7 +1886,7 @@ expert_help() {
   bi "  persist                 立即固化（persist_apply）"
   bi "  help                    显示本帮助"
   bi "  exit                    退出专家模式"
-  say ""
+  bi ""
 }
 
 expert_show() {
@@ -1992,7 +1968,7 @@ expert_parse_dsl() {
   [[ "$portspec" == *"-"* ]] && has_dash=1
 
   if (( has_comma == 1 && has_dash == 1 )); then
-    bi "[FAIL] DSL：multiport 不支持范围写法（80,100-200 这种不行）"
+    bi "[FAIL] DSL：multiport 不支持范围写法（80,100-200 这种不行）" >&2
     printf "\n"
     return 0
   fi
@@ -2004,7 +1980,7 @@ expert_parse_dsl() {
   if (( has_comma == 1 )); then
     porttmp="${portspec//,/ }"
     for p in $porttmp; do
-      valid_port "$p" || { bi "[FAIL] DSL：端口无效：$p"; printf "\n"; return 0; }
+      valid_port "$p" || { bi "[FAIL] DSL：端口无效：$p" >&2; printf "\n"; return 0; }
     done
     out+=" -m multiport --dports ${portspec} -j ${target}"
     printf "%s\n" "$out"
@@ -2014,27 +1990,27 @@ expert_parse_dsl() {
   if (( has_dash == 1 )); then
     a="${portspec%-*}"
     b="${portspec#*-}"
-    valid_port "$a" || { bi "[FAIL] DSL：端口无效：$a"; printf "\n"; return 0; }
-    valid_port "$b" || { bi "[FAIL] DSL：端口无效：$b"; printf "\n"; return 0; }
+    valid_port "$a" || { bi "[FAIL] DSL：端口无效：$a" >&2; printf "\n"; return 0; }
+    valid_port "$b" || { bi "[FAIL] DSL：端口无效：$b" >&2; printf "\n"; return 0; }
     out+=" --dport ${a}:${b} -j ${target}"
     printf "%s\n" "$out"
     return 0
   fi
 
-  valid_port "$portspec" || { bi "[FAIL] DSL：端口无效：$portspec"; printf "\n"; return 0; }
+  valid_port "$portspec" || { bi "[FAIL] DSL：端口无效：$portspec" >&2; printf "\n"; return 0; }
   out+=" --dport ${portspec} -j ${target}"
   printf "%s\n" "$out"
   return 0
 }
 
 expert_shell() {
-  say ""
-  say "$LINE"
+  bi ""
+  bi "$LINE"
   bi "[EXPERT] 已进入专家模式 / EXPERT"
   bi "   - EXPERT 不做任何确认/备份/护栏：你输入什么，就执行什么"
   bi "   - 自动补充：-t ${TABLE}"
   bi "   - 输入 help 查看说明，exit 退出"
-  say "$LINE"
+  bi "$LINE"
   expert_help
 
   local line s arg
@@ -2104,10 +2080,10 @@ expert_shell() {
 # Standard mode (原版完整控制台)
 ###############################################################################
 standard_help_screen() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║               iptctl · Standard 模式说明                  ║"
-  say "╚════════════════════════════════════════════════════════════╝"
+  bi ""
+  bi "╔════════════════════════════════════════════════════════════╗"
+  bi "║               iptctl · Standard 模式说明                  ║"
+  bi "╚════════════════════════════════════════════════════════════╝"
   bi "Standard 面向熟练用户："
   bi "  - 可选 table/chain，可添加/删除/批量删/清空/原始执行"
   bi "  - 删除与清空有护栏（备份+二次确认），避免误操作"
@@ -2116,37 +2092,37 @@ standard_help_screen() {
 }
 
 menu_standard() {
-  say ""
-  say "╔════════════════════════════════════════════════════════════╗"
-  say "║                 iptctl · 防火墙控制台                      ║"
-  say "╚════════════════════════════════════════════════════════════╝"
+  bi ""
+  bi "╔════════════════════════════════════════════════════════════╗"
+  bi "║                 iptctl · 防火墙控制台                      ║"
+  bi "╚════════════════════════════════════════════════════════════╝"
   bi "当前状态 / Current:"
   bi "  MODE=${MODE}"
   bi "  IP_MODE=${IP_MODE}   BACKEND=${BACKEND}"
   bi "  TABLE=${TABLE}   CHAIN=${CHAIN}"
   bi "  PERSIST_AFTER_CHANGE=${PERSIST_AFTER_CHANGE}  PERSIST_METHOD=${PERSIST_METHOD}"
-  say ""
+  bi ""
   bi "  1) 环境检测 / Env check"
   bi "  2) 选择 IPv4 / IPv6 / Select IPv4 / IPv6"
   bi "  3) 选择后端（auto / nft / legacy）/ Select backend (auto / nft / legacy)"
   bi "  4) 选择表（table）/ Select table"
   bi "  5) 选择链（chain）/ Select chain"
   bi "  6) 说明与帮助 / Help"
-  say ""
+  bi ""
   bi "  10) 查看规则 (-L 带编号)"
   bi "  11) 查看规则 (-S 原样)"
-  say ""
+  bi ""
   bi "  30) 添加规则（新手引导）"
   bi "  31) 删除规则（按编号）"
   bi "  32) 批量删除（编号列表/范围）"
   bi "  33) 清空链（-F，危险）"
   bi "  39) [WARN] 高级：原始参数执行"
-  say ""
+  bi ""
   bi "  50) [PERSIST] 固化/持久化中心"
-  say ""
+  bi ""
   bi "  90) 切换模式"
   bi "  0) 退出"
-  say ""
+  bi ""
 }
 
 standard_loop() {
@@ -2180,17 +2156,15 @@ standard_loop() {
 # Main dispatcher (三模式调度)
 ###############################################################################
 main() {
-  
-  # load config before any UI output
   config_load
   ui_style_maybe_prompt
-while true; do
+  while true; do
     select_mode
     case "$MODE" in
       beginner) beginner_loop ;;
       standard) standard_loop ;;
       expert)   expert_shell ;;
-      *) MODE="";;
+      *) MODE="" ;;
     esac
   done
 }
