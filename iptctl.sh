@@ -1259,6 +1259,52 @@ env_check() {
 list_rules_L() { run_ipt_scope -L "$CHAIN" -n -v --line-numbers; }
 list_rules_S() { run_ipt_scope -S "$CHAIN"; }
 
+search_rules() {
+  bi "$LINE"
+  bi "[SEARCH] 规则搜索 / Rule search"
+  bi "输入关键字（端口号、IP 地址或任意文本）/ Keyword (port / IP / text):"
+  local kw=""
+  kw="$(read_line "关键字 / Keyword: ")"
+  [[ -z "$kw" ]] && { bi "已取消 / Cancelled"; return 0; }
+
+  local fams=()
+  if [[ "$IP_MODE" == "4" ]]; then fams=("4")
+  elif [[ "$IP_MODE" == "6" ]]; then fams=("6")
+  else fams=("4" "6"); fi
+
+  local total=0
+  for fam in "${fams[@]}"; do
+    local label="IPv4"
+    [[ "$fam" == "6" ]] && label="IPv6"
+    local IPT=""
+    IPT="$(ipt_cmd_for "$fam" 2>/dev/null)" || { bi "[WARN] $label: 未找到命令"; continue; }
+    need_root_or_sudo || return 3
+
+    bi ""
+    bi "[${label}] TABLE=${TABLE} CHAIN=${CHAIN} 搜索：${kw}"
+    bi "$LINE"
+
+    local found=0 linenum=0 line
+    while IFS= read -r line; do
+      (( linenum++ ))
+      if (( linenum <= 2 )); then
+        bi "$line"
+        continue
+      fi
+      if [[ "$line" == *"$kw"* ]]; then
+        bi "$line"
+        (( found++ ))
+      fi
+    done < <(${SUDO} "$IPT" -t "$TABLE" -L "$CHAIN" -n -v --line-numbers 2>&1)
+
+    bi "$LINE"
+    bi "[${label}] 共 $found 条匹配 / $found match(es)"
+    (( total += found ))
+  done
+  bi ""
+  bi "合计 / Total: $total 条"
+}
+
 # pick_families <fams_varname> <scope_varname> [dual_stack_warn]
 # Fills the named array and string based on current IP_MODE.
 # Returns 2 if the user cancels (dual-stack interactive prompt only).
@@ -1542,13 +1588,18 @@ add_rule_wizard() {
       port="$(read_num "端口 / Port (1-65535): ")"
       valid_port "${port:-0}" || { bi "[FAIL] 端口无效 / Invalid port"; return 1; }
 
+      local wiz_comment=""
+      wiz_comment="$(read_line "注释（可选，回车跳过）/ Comment (optional): ")"
+      local wiz_comment_args=()
+      [[ -n "$wiz_comment" ]] && wiz_comment_args=("-m" "comment" "--comment" "$wiz_comment")
+
       rc=0
       if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-        wizard_run_for_family 4 base4 -p "$proto" --dport "$port" -j "$action" || rc=1
+        wizard_run_for_family 4 base4 -p "$proto" --dport "$port" "${wiz_comment_args[@]}" -j "$action" || rc=1
       fi
       if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
         if ipt_cmd_for 6 >/dev/null 2>&1; then
-          wizard_run_for_family 6 base6 -p "$proto" --dport "$port" -j "$action" || rc=1
+          wizard_run_for_family 6 base6 -p "$proto" --dport "$port" "${wiz_comment_args[@]}" -j "$action" || rc=1
         else
           [[ "$IP_MODE" == "6" ]] && rc=1
         fi
@@ -1707,17 +1758,22 @@ beginner_allow_port() {
   port="$(read_num "端口 / Port (1-65535): ")"
   valid_port "${port:-0}" || { bi "[FAIL] 端口无效 / Invalid port"; return 1; }
 
+  local comment=""
+  comment="$(read_line "注释（可选，回车跳过）/ Comment (optional): ")"
+  local comment_args=()
+  [[ -n "$comment" ]] && comment_args=("-m" "comment" "--comment" "$comment")
+
   bi "将放行：${proto^^} 端口 ${port}（TABLE=filter CHAIN=INPUT）"
   confirm_add_rule "放行 ${proto^^} 端口 ${port} -> ACCEPT" || return $?
 
   local rc=0
   if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-    run_ipt_add_if_missing 4 -A "$CHAIN" -p "$proto" --dport "$port" -j ACCEPT || rc=1
+    run_ipt_add_if_missing 4 -A "$CHAIN" -p "$proto" --dport "$port" "${comment_args[@]}" -j ACCEPT || rc=1
     (( rc == 0 )) && bi "[OK] IPv4 OK"
   fi
   if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
     if ipt_cmd_for 6 >/dev/null 2>&1; then
-      run_ipt_add_if_missing 6 -A "$CHAIN" -p "$proto" --dport "$port" -j ACCEPT || rc=1
+      run_ipt_add_if_missing 6 -A "$CHAIN" -p "$proto" --dport "$port" "${comment_args[@]}" -j ACCEPT || rc=1
       (( rc == 0 )) && bi "[OK] IPv6 OK"
     else
       bi "[WARN] 未检测到 ip6tables，跳过 IPv6"
@@ -1760,16 +1816,21 @@ beginner_quickstart_wizard() {
   [[ -z "$p" ]] && p="22"
   valid_port "$p" || { bi "[FAIL] 端口无效 / Invalid port"; pause; return 1; }
 
+  local qwiz_comment=""
+  qwiz_comment="$(read_line "注释（可选，回车跳过）/ Comment (optional): ")"
+  local qwiz_comment_args=()
+  [[ -n "$qwiz_comment" ]] && qwiz_comment_args=("-m" "comment" "--comment" "$qwiz_comment")
+
   local _rc=0
   confirm_add_rule "放行 TCP 端口 ${p} -> ACCEPT" || { _rc=$?; pause; return $_rc; }
 
   local rc=0
   if [[ "$IP_MODE" == "4" || "$IP_MODE" == "46" ]]; then
-    run_ipt_add_if_missing 4 -A "$CHAIN" -p tcp --dport "$p" -j ACCEPT || rc=1
+    run_ipt_add_if_missing 4 -A "$CHAIN" -p tcp --dport "$p" "${qwiz_comment_args[@]}" -j ACCEPT || rc=1
   fi
   if [[ "$IP_MODE" == "6" || "$IP_MODE" == "46" ]]; then
     if ipt_cmd_for 6 >/dev/null 2>&1; then
-      run_ipt_add_if_missing 6 -A "$CHAIN" -p tcp --dport "$p" -j ACCEPT || rc=1
+      run_ipt_add_if_missing 6 -A "$CHAIN" -p tcp --dport "$p" "${qwiz_comment_args[@]}" -j ACCEPT || rc=1
     else
       bi "[WARN] 未检测到 ip6tables，跳过 IPv6"
     fi
@@ -1813,6 +1874,7 @@ beginner_menu() {
   bi "  20) 放行已建立连接 (ESTABLISHED,RELATED) -> ACCEPT"
   bi "  21) 放行 TCP 端口 -> ACCEPT"
   bi "  22) 放行 UDP 端口 -> ACCEPT"
+  bi "  23) 搜索规则（按端口/IP/关键字）"
   bi ""
   bi "  50) [PERSIST] 固化/持久化中心（完整）"
   bi "  51) [PERSIST] 一键固化（auto）"
@@ -1841,6 +1903,7 @@ beginner_loop() {
       20) run_action "放行已建立连接" beginner_allow_established; pause ;;
       21) run_action "放行 TCP 端口" beginner_allow_port tcp; pause ;;
       22) run_action "放行 UDP 端口" beginner_allow_port udp; pause ;;
+      23) run_action "搜索规则" search_rules; pause ;;
       50) run_action "固化/持久化中心" persist_menu ;;
       51) beginner_persist_quick; pause ;;
       52) run_action "选择固化方式（三选一/默认）" persist_method_quick_pick; pause ;;
@@ -1877,6 +1940,10 @@ expert_help() {
   bi "  1000-2000/udp allow        -> -A ... --dport 1000:2000 -j ACCEPT"
   bi "  from 1.2.3.4 22/tcp allow  -> 加 -s 1.2.3.4"
   bi ""
+  bi "DSL 注释（# 语法，自动转成 -m comment --comment）："
+  bi "  22/tcp allow # Allow SSH   -> 追加 -m comment --comment 'Allow SSH'"
+  bi "  from 1.2.3.4 80/tcp allow # office -> 加 src + comment"
+  bi ""
   bi "REPL 内置命令："
   bi "  show                    显示当前上下文"
   bi "  ip 4|6|46               设置 IP_MODE"
@@ -1884,6 +1951,7 @@ expert_help() {
   bi "  table <name>            设置 TABLE"
   bi "  chain <name>            设置 CHAIN"
   bi "  persist                 立即固化（persist_apply）"
+  bi "  search                  搜索规则（按端口/IP/关键字）"
   bi "  help                    显示本帮助"
   bi "  exit                    退出专家模式"
   bi ""
@@ -2023,6 +2091,7 @@ expert_shell() {
     if [[ "$line" == "help" ]]; then expert_help; continue; fi
     if [[ "$line" == "show" ]]; then expert_show; continue; fi
     if [[ "$line" == "persist" ]]; then run_action "固化一次 / Persist now" persist_apply; continue; fi
+    if [[ "$line" == "search" ]]; then search_rules; continue; fi
 
     if [[ "$line" =~ ^ip[[:space:]]+ ]]; then
       arg="$(trim "${line#ip}")"
@@ -2056,10 +2125,18 @@ expert_shell() {
       continue
     fi
 
-    s="$(expert_parse_dsl "$line")"
+    # Strip trailing # comment before DSL/shortcut parsing
+    local expert_comment="" line_nc="$line"
+    if [[ "$line" =~ ^([^#]*)#(.*)$ ]]; then
+      line_nc="$(trim "${BASH_REMATCH[1]}")"
+      expert_comment="$(trim "${BASH_REMATCH[2]}")"
+    fi
+    [[ -z "$line_nc" ]] && continue
+
+    s="$(expert_parse_dsl "$line_nc")"
     s="$(trim "$s")"
     if [[ -z "$s" ]]; then
-      s="$(expert_translate_shortcuts "$line")"
+      s="$(expert_translate_shortcuts "$line_nc")"
     fi
     s="$(trim "$s")"
     [[ -z "$s" ]] && continue
@@ -2069,7 +2146,10 @@ expert_shell() {
     local arr=($s)
     set +f
 
-    run_ipt_scope "${arr[@]}" || {
+    local comment_arr=()
+    [[ -n "$expert_comment" ]] && comment_arr=("-m" "comment" "--comment" "$expert_comment")
+
+    run_ipt_scope "${arr[@]}" "${comment_arr[@]}" || {
       bi "[WARN] EXPERT：命令执行失败（可能是参数/模块/编号等问题）"
     }
   done
@@ -2111,6 +2191,7 @@ menu_standard() {
   bi ""
   bi "  10) 查看规则 (-L 带编号)"
   bi "  11) 查看规则 (-S 原样)"
+  bi "  12) 搜索规则（按端口/IP/关键字）"
   bi ""
   bi "  30) 添加规则（新手引导）"
   bi "  31) 删除规则（按编号）"
@@ -2140,6 +2221,7 @@ standard_loop() {
       6) standard_help_screen ;;
       10) run_action "查看规则 (-L)" list_rules_L; pause ;;
       11) run_action "查看规则 (-S)" list_rules_S; pause ;;
+      12) run_action "搜索规则" search_rules; pause ;;
       30) run_action "添加规则（向导）" add_rule_wizard; pause ;;
       31) run_action "删除规则（按编号）" delete_rule_by_num; pause ;;
       32) run_action "批量删除（编号/范围）" delete_rules_bulk; pause ;;
