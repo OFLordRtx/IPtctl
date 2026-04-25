@@ -15,4 +15,5 @@ about: 报告一个问题 / Report a bug
 
 ## 环境 / Environment
 - OS:
+- iptables version:
 - IPtctl version:
