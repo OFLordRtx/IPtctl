@@ -1640,6 +1640,267 @@ add_rule_wizard() {
 }
 
 ###############################################################################
+# ipset support (封禁集合 / 地址集合管理)
+###############################################################################
+IPSET_CMD=""
+
+ipset_find_cmd() {
+  [[ -n "$IPSET_CMD" ]] && return 0
+  cmd_exists ipset && { IPSET_CMD="ipset"; return 0; }
+  return 1
+}
+
+ipset_detect() { ipset_find_cmd; }
+
+ipset_install() {
+  need_root_or_sudo || return 1
+  local pkg_mgr=""
+  if cmd_exists apt-get; then pkg_mgr="apt-get"
+  elif cmd_exists dnf; then   pkg_mgr="dnf"
+  elif cmd_exists yum; then   pkg_mgr="yum"
+  fi
+  if [[ -z "$pkg_mgr" ]]; then
+    bi "[FAIL] 未找到包管理器，请手动安装 ipset"
+    return 1
+  fi
+  bi "将通过 ${pkg_mgr} 安装 ipset / Installing ipset via ${pkg_mgr}"
+  if ! confirm_phrase "输入 YES 安装 / Type YES to install: " "YES"; then
+    bi "已取消 / Cancelled"; return 2
+  fi
+  case "$pkg_mgr" in
+    apt-get) ${SUDO} apt-get install -y ipset ;;
+    dnf)     ${SUDO} dnf install -y ipset ;;
+    yum)     ${SUDO} yum install -y ipset ;;
+  esac
+  IPSET_CMD=""
+  ipset_find_cmd || { bi "[FAIL] 安装后仍未检测到 ipset"; return 1; }
+  bi "[OK] ipset 已安装"
+}
+
+run_ipset() {
+  ipset_find_cmd || { bi "[FAIL] ipset 未安装 / not installed"; return 1; }
+  need_root_or_sudo || return 3
+  ${SUDO} "$IPSET_CMD" "$@"
+}
+
+ipset_ensure() {
+  ipset_detect && return 0
+  bi "[WARN] 未检测到 ipset / ipset not found"
+  bi "  1) 安装 ipset / Install"
+  bi "  0) 取消 / Cancel"
+  local c; c="$(read_num "选择 / Choose: ")"
+  case "$c" in
+    1) ipset_install || return 1 ;;
+    *) return 1 ;;
+  esac
+}
+
+ipset_list_sets() {
+  run_ipset list -n
+}
+
+ipset_show_set() {
+  bi "输入 set 名称（留空列出所有）/ Name (blank = list all):"
+  local name; name="$(read_line "Set name: ")"
+  if [[ -z "$name" ]]; then
+    run_ipset list -n
+  else
+    run_ipset list "$name"
+  fi
+}
+
+ipset_create() {
+  bi "[IPSET] 创建 set / Create set"
+  bi "常用类型：hash:ip（单 IP）  hash:net（CIDR 段）  hash:ip,port"
+  local name="" settype=""
+  name="$(read_line "Set 名称 / Name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+  settype="$(read_line "类型（回车默认 hash:ip）/ Type [hash:ip]: ")"
+  [[ -z "$settype" ]] && settype="hash:ip"
+  run_ipset create "$name" "$settype" && bi "[OK] 已创建：$name ($settype)"
+}
+
+ipset_add_ip() {
+  local name="" ip=""
+  name="$(read_line "Set 名称 / Set name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+  ip="$(read_line "IP 地址 / IP: ")"
+  [[ -z "$ip" ]] && { bi "已取消"; return 0; }
+  run_ipset add "$name" "$ip" && bi "[OK] 已添加：$ip -> $name"
+}
+
+ipset_bulk_add() {
+  local name=""
+  name="$(read_line "Set 名称 / Set name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+  bi "逐行输入 IP/CIDR（空行结束）/ Enter IPs one per line, blank to finish:"
+  local ip rc=0
+  while true; do
+    ip="$(read_line "  IP (blank=done): ")"
+    [[ -z "$ip" ]] && break
+    run_ipset add "$name" "$ip" && bi "  [OK] +$ip" || { bi "  [FAIL] $ip"; rc=1; }
+  done
+  return $rc
+}
+
+ipset_del_ip() {
+  local name="" ip=""
+  name="$(read_line "Set 名称 / Set name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+  ip="$(read_line "IP 地址 / IP: ")"
+  [[ -z "$ip" ]] && { bi "已取消"; return 0; }
+  run_ipset del "$name" "$ip" && bi "[OK] 已删除：$ip from $name"
+}
+
+ipset_flush_set() {
+  bi "输入 set 名称（留空=清空所有）/ Name (blank=flush ALL):"
+  local name; name="$(read_line "Set name: ")"
+  if [[ -z "$name" ]]; then
+    bi "[WARN] 将清空所有 set 中的 IP（set 结构保留）"
+    confirm_phrase "输入 YES 确认 / Type YES to confirm: " "YES" || { bi "已取消"; return 0; }
+    run_ipset flush && bi "[OK] 已清空所有 set"
+  else
+    run_ipset flush "$name" && bi "[OK] 已清空：$name"
+  fi
+}
+
+ipset_destroy_set() {
+  local name=""
+  name="$(read_line "Set 名称 / Set name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+  bi "[WARN] 即将删除 set（结构和所有 IP）: $name"
+  confirm_phrase "输入 YES 确认删除 / Type YES to destroy: " "YES" || { bi "已取消"; return 0; }
+  run_ipset destroy "$name" && bi "[OK] 已删除：$name"
+}
+
+ipset_use_in_iptables() {
+  bi "[IPSET] 将 set 应用为 iptables 规则 / Use set in iptables"
+  local name=""
+  name="$(read_line "Set 名称 / Set name: ")"
+  [[ -z "$name" ]] && { bi "已取消"; return 0; }
+
+  bi "匹配方向 / Match direction:"
+  bi "  1) src（来源 IP 在 set 中）"
+  bi "  2) dst（目标 IP 在 set 中）"
+  local d; d="$(read_num "选择 / Choose: ")"
+  local dir="src"; [[ "$d" == "2" ]] && dir="dst"
+
+  bi "动作 / Action:"
+  bi "  1) DROP  （封禁）"
+  bi "  2) ACCEPT（放行）"
+  bi "  3) REJECT（拒绝并告知）"
+  local a; a="$(read_num "选择 / Choose: ")"
+  local action="DROP"
+  case "$a" in 2) action="ACCEPT" ;; 3) action="REJECT" ;; esac
+
+  local fams=() scope_desc=""
+  pick_families fams scope_desc || return $?
+
+  local fam rc=0
+  for fam in "${fams[@]}"; do
+    run_ipt "$fam" -A "$CHAIN" -m set --match-set "$name" "$dir" -j "$action" || rc=1
+  done
+  (( rc == 0 )) && bi "[OK] 已应用：$name($dir) -> $action" && maybe_persist_after_change
+  return $rc
+}
+
+# Simplified ban-list for beginner mode, uses fixed set name "iptctl-ban"
+IPSET_BAN_SET="iptctl-ban"
+ipset_beginner_ban() {
+  ipset_ensure || return 1
+
+  bi "$LINE"
+  bi "[IPSET] 快速封禁列表 / Quick ban list"
+  bi "使用 set 名称：${IPSET_BAN_SET}  类型：hash:ip"
+
+  if ! run_ipset list "$IPSET_BAN_SET" >/dev/null 2>&1; then
+    run_ipset create "$IPSET_BAN_SET" hash:ip || { bi "[FAIL] 无法创建 set"; return 1; }
+    bi "[OK] 已创建 set：$IPSET_BAN_SET"
+  else
+    bi "[INFO] set 已存在：$IPSET_BAN_SET"
+  fi
+
+  bi ""
+  bi "  1) 添加单个 IP 到封禁列表"
+  bi "  2) 批量添加（逐行输入，空行结束）"
+  bi "  3) 查看封禁列表"
+  bi "  4) 从封禁列表删除 IP"
+  bi "  5) 将封禁规则应用到 iptables（-j DROP）"
+  bi "  0) 返回"
+  bi ""
+  local c; c="$(read_num "选择 / Choose: ")"
+  case "$c" in
+    0|"") return 0 ;;
+    1)
+      local ip=""; ip="$(read_line "IP 地址: ")"
+      [[ -z "$ip" ]] && return 0
+      run_ipset add "$IPSET_BAN_SET" "$ip" && bi "[OK] 已封禁：$ip"
+      ;;
+    2)
+      bi "逐行输入 IP（空行结束）:"
+      local ip
+      while true; do
+        ip="$(read_line "  IP (blank=done): ")"
+        [[ -z "$ip" ]] && break
+        run_ipset add "$IPSET_BAN_SET" "$ip" && bi "  [OK] +$ip" || bi "  [FAIL] $ip"
+      done
+      ;;
+    3) run_ipset list "$IPSET_BAN_SET" ;;
+    4)
+      local ip=""; ip="$(read_line "要解封的 IP: ")"
+      [[ -z "$ip" ]] && return 0
+      run_ipset del "$IPSET_BAN_SET" "$ip" && bi "[OK] 已解封：$ip"
+      ;;
+    5)
+      bi "将添加：-A ${CHAIN} -m set --match-set ${IPSET_BAN_SET} src -j DROP"
+      local fams=() scope_desc=""
+      pick_families fams scope_desc || return $?
+      local fam rc=0
+      for fam in "${fams[@]}"; do
+        run_ipt "$fam" -A "$CHAIN" -m set --match-set "$IPSET_BAN_SET" src -j DROP || rc=1
+      done
+      (( rc == 0 )) && bi "[OK] 封禁规则已应用" && maybe_persist_after_change
+      return $rc
+      ;;
+    *) bi "无效选项 / Invalid option" ;;
+  esac
+}
+
+ipset_menu() {
+  ipset_ensure || return 1
+  while true; do
+    bi "$LINE"
+    bi "[IPSET] ipset 管理 / ipset management"
+    bi ""
+    bi "  1) 列出所有 set（名称）"
+    bi "  2) 查看 set 详情"
+    bi "  3) 创建 set"
+    bi "  4) 添加 IP"
+    bi "  5) 批量添加 IP"
+    bi "  6) 删除 IP"
+    bi "  7) 清空 set（只清 IP，保留结构）"
+    bi "  8) 删除 set（连结构一起删）"
+    bi "  9) 应用 set 到 iptables 规则"
+    bi "  0) 返回"
+    bi ""
+    local c; c="$(read_num "选择 / Choose: ")"
+    case "$c" in
+      0|"") return 0 ;;
+      1) run_action "列出所有 set" ipset_list_sets; pause ;;
+      2) run_action "查看 set 详情" ipset_show_set; pause ;;
+      3) run_action "创建 set" ipset_create; pause ;;
+      4) run_action "添加 IP" ipset_add_ip; pause ;;
+      5) run_action "批量添加 IP" ipset_bulk_add; pause ;;
+      6) run_action "删除 IP" ipset_del_ip; pause ;;
+      7) run_action "清空 set" ipset_flush_set; pause ;;
+      8) run_action "删除 set" ipset_destroy_set; pause ;;
+      9) run_action "应用 set 到 iptables" ipset_use_in_iptables; pause ;;
+      *) bi "无效选项 / Invalid option" ;;
+    esac
+  done
+}
+
+###############################################################################
 # MODE selector (三模式入口)
 ###############################################################################
 select_mode() {
@@ -1880,6 +2141,8 @@ beginner_menu() {
   bi "  51) [PERSIST] 一键固化（auto）"
   bi "  52) [PERSIST] 选择固化方式（三选一/默认）"
   bi ""
+  bi "  60) [IPSET] 快速封禁列表（ipset）"
+  bi ""
   bi "  90) 切换模式"
   bi "  0) 退出"
   bi ""
@@ -1907,6 +2170,7 @@ beginner_loop() {
       50) run_action "固化/持久化中心" persist_menu ;;
       51) beginner_persist_quick; pause ;;
       52) run_action "选择固化方式（三选一/默认）" persist_method_quick_pick; pause ;;
+      60) run_action "快速封禁列表（ipset）" ipset_beginner_ban; pause ;;
       90) return 0 ;;
       *) bi "无效选项 / Invalid option" ;;
     esac
@@ -1920,38 +2184,49 @@ beginner_loop() {
 expert_help() {
   bi ""
   bi "EXPERT 模式帮助："
-  bi "  - 你输入的是 iptables 参数（不含 iptables 与 -t），脚本会自动加上 -t ${TABLE}"
+  bi "  - 原始参数：不含 iptables/-t，脚本自动补 -t ${TABLE}"
   bi "  - 支持历史/Tab（read -e）"
   bi ""
-  bi "快捷自动补充（行首写法）："
-  bi "  A ...   -> -A ..."
-  bi "  I ...   -> -I ..."
-  bi "  D ...   -> -D ..."
-  bi "  F       -> -F ${CHAIN}"
+  bi "快捷补全（行首）："
+  bi "  A ...   -> -A ...    I ...   -> -I ..."
+  bi "  D ...   -> -D ...    F       -> -F ${CHAIN}"
   bi "  L       -> -L ${CHAIN} -n -v --line-numbers"
   bi "  S       -> -S ${CHAIN}"
   bi ""
-  bi "口语 DSL（匹配到就自动转成规则，没匹配到就当普通输入）："
-  bi "  22/tcp allow               -> -A ${CHAIN} -p tcp --dport 22 -j ACCEPT"
-  bi "  allow 22/tcp               -> 同上"
-  bi "  53/udp allow"
-  bi "  22/tcp drop                -> -A ... -j DROP"
-  bi "  80,443/tcp allow           -> -A ... -m multiport --dports 80,443 -j ACCEPT"
-  bi "  1000-2000/udp allow        -> -A ... --dport 1000:2000 -j ACCEPT"
-  bi "  from 1.2.3.4 22/tcp allow  -> 加 -s 1.2.3.4"
+  bi "口语 DSL（没匹配到则当普通输入）："
+  bi "  格式：[insert] [from <src>] [to <dst>] <port>/<proto> <action> [on <iface>] [# comment]"
   bi ""
-  bi "DSL 注释（# 语法，自动转成 -m comment --comment）："
-  bi "  22/tcp allow # Allow SSH   -> 追加 -m comment --comment 'Allow SSH'"
-  bi "  from 1.2.3.4 80/tcp allow # office -> 加 src + comment"
+  bi "  端口/协议/动作："
+  bi "    22/tcp allow          -> -A ${CHAIN} -p tcp --dport 22 -j ACCEPT"
+  bi "    allow 22/tcp          -> 同上（词序颠倒）"
+  bi "    22/tcp drop           -> -j DROP"
+  bi "    22/tcp reject         -> -j REJECT"
+  bi "    22/tcp log            -> -j LOG --log-prefix iptctl:"
+  bi "    80,443/tcp allow      -> -m multiport --dports 80,443 -j ACCEPT"
+  bi "    1000-2000/udp allow   -> --dport 1000:2000 -j ACCEPT"
   bi ""
-  bi "REPL 内置命令："
+  bi "  修饰前缀/后缀："
+  bi "    insert 22/tcp allow          -> -I ${CHAIN} 1 ...（插入链首）"
+  bi "    from 1.2.3.4 22/tcp allow    -> -s 1.2.3.4 ..."
+  bi "    to 10.0.0.1 22/tcp allow     -> -d 10.0.0.1 ..."
+  bi "    from 1.2.3.4 to 10.0.0.1 22/tcp allow  -> -s ... -d ..."
+  bi "    22/tcp allow on eth0         -> -i eth0 ..."
+  bi "    22/tcp allow # Allow SSH     -> -m comment --comment 'Allow SSH'"
+  bi ""
+  bi "REPL 内置命令（IP 操作直接作用于当前 CHAIN/TABLE）："
+  bi "  block <ip>              封禁 IP（-A ${CHAIN} -s <ip> -j DROP，自动识别 v4/v6）"
+  bi "  unblock <ip>            解封 IP（-D ${CHAIN} -s <ip> -j DROP）"
+  bi "  policy <ACTION>         设置链默认策略（ACCEPT / DROP）"
   bi "  show                    显示当前上下文"
   bi "  ip 4|6|46               设置 IP_MODE"
   bi "  backend auto|nft|legacy 设置 BACKEND"
   bi "  table <name>            设置 TABLE"
   bi "  chain <name>            设置 CHAIN"
-  bi "  persist                 立即固化（persist_apply）"
-  bi "  search                  搜索规则（按端口/IP/关键字）"
+  bi "  persist                 立即固化"
+  bi "  backup                  备份当前规则"
+  bi "  search                  搜索规则（端口/IP/关键字）"
+  bi "  ipset                   进入 ipset 管理菜单"
+  bi "  ipset <args>            直通 ipset 命令（如：ipset list / ipset add SET IP）"
   bi "  help                    显示本帮助"
   bi "  exit                    退出专家模式"
   bi ""
@@ -1999,24 +2274,68 @@ expert_translate_shortcuts() {
 }
 
 expert_parse_dsl() {
-  local s src="" rest="" action="" portspec="" proto="" target="" out="" porttmp="" a="" b="" p="" has_comma=0 has_dash=0
+  # Parses a colloquial DSL line into an iptables args string.
+  # Returns an empty line if the input doesn't match any known pattern.
+  #
+  # Supported prefixes/suffixes (combinable):
+  #   insert <...>                    use -I CHAIN 1 instead of -A CHAIN
+  #   from <src-ip> [to <dst-ip>]     source / destination address
+  #   to <dst-ip>                     destination address only
+  #   <...> on <iface>                bind to interface (-i <iface>)
+  #
+  # Core patterns (port/proto/action):
+  #   <port>/tcp allow                ACCEPT single port
+  #   <port>/udp drop                 DROP single port
+  #   80,443/tcp allow                multiport (no ranges mixed)
+  #   1000-2000/tcp allow             port range
+  #   allow <port>/tcp                word order flipped
+  #   <port>/tcp log                  LOG target (prefix: iptctl:)
+  #   <port>/tcp reject               REJECT target
+  #
+  # Actions: allow / accept / drop / deny / reject / log
 
-  s="$(trim "${1-}")"
+  local s="$(trim "${1-}")"
   [[ -z "$s" ]] && { printf "\n"; return 0; }
 
+  local op_flag="-A" iface="" src="" dst=""
+  local rest="" action="" portspec="" proto="" target="" out="" a="" b="" p="" porttmp=""
+  local has_comma=0 has_dash=0
+
+  # Step 1: strip "insert" prefix → use -I CHAIN 1
+  if [[ "$s" =~ ^insert[[:space:]]+(.+)$ ]]; then
+    op_flag="-I"
+    s="$(trim "${BASH_REMATCH[1]}")"
+  fi
+
+  # Step 2: strip "on <iface>" suffix
+  if [[ "$s" =~ ^(.*)[[:space:]]+on[[:space:]]+([^[:space:]]+)$ ]]; then
+    iface="${BASH_REMATCH[2]}"
+    s="$(trim "${BASH_REMATCH[1]}")"
+  fi
+
+  # Step 3: parse "from <src>" and optional "to <dst>", or standalone "to <dst>"
   if [[ "$s" =~ ^from[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)$ ]]; then
     src="${BASH_REMATCH[1]}"
-    rest="${BASH_REMATCH[2]}"
-  else
-    rest="$s"
+    s="$(trim "${BASH_REMATCH[2]}")"
+    if [[ "$s" =~ ^to[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)$ ]]; then
+      dst="${BASH_REMATCH[1]}"
+      s="$(trim "${BASH_REMATCH[2]}")"
+    fi
+  elif [[ "$s" =~ ^to[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)$ ]]; then
+    dst="${BASH_REMATCH[1]}"
+    s="$(trim "${BASH_REMATCH[2]}")"
   fi
-  rest="$(trim "$rest")"
 
-  if [[ "$rest" =~ ^([0-9][0-9,-]*|[0-9]+-[0-9]+)\/(tcp|udp)[[:space:]]+(allow|accept|drop|deny|reject)$ ]]; then
+  rest="$s"
+
+  # Step 4: match core port/proto/action pattern
+  local ACT_PAT="allow|accept|drop|deny|reject|log"
+  local PORT_PAT="[0-9][0-9,-]*|[0-9]+-[0-9]+"
+  if [[ "$rest" =~ ^(${PORT_PAT})\/(tcp|udp)[[:space:]]+(${ACT_PAT})$ ]]; then
     portspec="${BASH_REMATCH[1]}"
     proto="${BASH_REMATCH[2]}"
     action="${BASH_REMATCH[3]}"
-  elif [[ "$rest" =~ ^(allow|accept|drop|deny|reject)[[:space:]]+([0-9][0-9,-]*|[0-9]+-[0-9]+)\/(tcp|udp)$ ]]; then
+  elif [[ "$rest" =~ ^(${ACT_PAT})[[:space:]]+(${PORT_PAT})\/(tcp|udp)$ ]]; then
     action="${BASH_REMATCH[1]}"
     portspec="${BASH_REMATCH[2]}"
     proto="${BASH_REMATCH[3]}"
@@ -2027,8 +2346,9 @@ expert_parse_dsl() {
 
   case "$action" in
     allow|accept) target="ACCEPT" ;;
-    drop|deny)    target="DROP" ;;
+    drop|deny)    target="DROP"   ;;
     reject)       target="REJECT" ;;
+    log)          target="LOG"    ;;
     *) printf "\n"; return 0 ;;
   esac
 
@@ -2036,37 +2356,49 @@ expert_parse_dsl() {
   [[ "$portspec" == *"-"* ]] && has_dash=1
 
   if (( has_comma == 1 && has_dash == 1 )); then
-    bi "[FAIL] DSL：multiport 不支持范围写法（80,100-200 这种不行）" >&2
-    printf "\n"
-    return 0
+    bi "[FAIL] DSL：multiport 不支持混合逗号+范围写法（如 80,100-200）" >&2
+    printf "\n"; return 0
   fi
 
-  out="-A ${CHAIN}"
-  [[ -n "$src" ]] && out+=" -s ${src}"
+  # Build the args string
+  if [[ "$op_flag" == "-I" ]]; then
+    out="-I ${CHAIN} 1"
+  else
+    out="-A ${CHAIN}"
+  fi
+  [[ -n "$iface" ]] && out+=" -i ${iface}"
+  [[ -n "$src"   ]] && out+=" -s ${src}"
+  [[ -n "$dst"   ]] && out+=" -d ${dst}"
   out+=" -p ${proto}"
+
+  _dsl_append_target() {
+    local _t="$1"
+    if [[ "$_t" == "LOG" ]]; then
+      printf " -j LOG --log-prefix iptctl:"
+    else
+      printf " -j %s" "$_t"
+    fi
+  }
 
   if (( has_comma == 1 )); then
     porttmp="${portspec//,/ }"
     for p in $porttmp; do
       valid_port "$p" || { bi "[FAIL] DSL：端口无效：$p" >&2; printf "\n"; return 0; }
     done
-    out+=" -m multiport --dports ${portspec} -j ${target}"
-    printf "%s\n" "$out"
-    return 0
+    out+=" -m multiport --dports ${portspec}$(_dsl_append_target "$target")"
+    printf "%s\n" "$out"; return 0
   fi
 
   if (( has_dash == 1 )); then
-    a="${portspec%-*}"
-    b="${portspec#*-}"
+    a="${portspec%-*}"; b="${portspec#*-}"
     valid_port "$a" || { bi "[FAIL] DSL：端口无效：$a" >&2; printf "\n"; return 0; }
     valid_port "$b" || { bi "[FAIL] DSL：端口无效：$b" >&2; printf "\n"; return 0; }
-    out+=" --dport ${a}:${b} -j ${target}"
-    printf "%s\n" "$out"
-    return 0
+    out+=" --dport ${a}:${b}$(_dsl_append_target "$target")"
+    printf "%s\n" "$out"; return 0
   fi
 
   valid_port "$portspec" || { bi "[FAIL] DSL：端口无效：$portspec" >&2; printf "\n"; return 0; }
-  out+=" --dport ${portspec} -j ${target}"
+  out+=" --dport ${portspec}$(_dsl_append_target "$target")"
   printf "%s\n" "$out"
   return 0
 }
@@ -2092,6 +2424,57 @@ expert_shell() {
     if [[ "$line" == "show" ]]; then expert_show; continue; fi
     if [[ "$line" == "persist" ]]; then run_action "固化一次 / Persist now" persist_apply; continue; fi
     if [[ "$line" == "search" ]]; then search_rules; continue; fi
+    if [[ "$line" == "backup" ]]; then
+      local _bfams=()
+      if [[ "$IP_MODE" == "4" ]]; then _bfams=("4")
+      elif [[ "$IP_MODE" == "6" ]]; then _bfams=("6")
+      else _bfams=("4" "6"); fi
+      do_backup "${_bfams[@]}"
+      continue
+    fi
+
+    # block <ip>  /  block from <ip>
+    if [[ "$line" =~ ^block([[:space:]]+from)?[[:space:]]+([^[:space:]]+)$ ]]; then
+      local _blk_ip="${BASH_REMATCH[2]}"
+      local _blk_fam; [[ "$_blk_ip" == *:* ]] && _blk_fam="6" || _blk_fam="4"
+      run_ipt "$_blk_fam" -A "$CHAIN" -s "$_blk_ip" -j DROP \
+        && bi "[OK] blocked: $_blk_ip" \
+        || bi "[WARN] block failed"
+      continue
+    fi
+
+    # unblock <ip>  /  unblock from <ip>
+    if [[ "$line" =~ ^unblock([[:space:]]+from)?[[:space:]]+([^[:space:]]+)$ ]]; then
+      local _ublk_ip="${BASH_REMATCH[2]}"
+      local _ublk_fam; [[ "$_ublk_ip" == *:* ]] && _ublk_fam="6" || _ublk_fam="4"
+      run_ipt "$_ublk_fam" -D "$CHAIN" -s "$_ublk_ip" -j DROP \
+        && bi "[OK] unblocked: $_ublk_ip" \
+        || bi "[WARN] unblock failed (rule may not exist)"
+      continue
+    fi
+
+    # policy <ACTION>
+    if [[ "$line" =~ ^policy[[:space:]]+([^[:space:]]+)$ ]]; then
+      local _pol="${BASH_REMATCH[1]}"
+      _pol="${_pol^^}"
+      run_ipt_scope -P "$CHAIN" "$_pol" && bi "[OK] policy ${CHAIN} ${_pol}"
+      continue
+    fi
+
+    # ipset <args>  /  ipset (menu)
+    if [[ "$line" == "ipset" ]]; then
+      ipset_menu; continue
+    fi
+    if [[ "$line" =~ ^ipset[[:space:]]+(.+)$ ]]; then
+      local _ipset_args="${BASH_REMATCH[1]}"
+      ipset_ensure || continue
+      set -f
+      # shellcheck disable=SC2206
+      local _ipset_arr=($_ipset_args)
+      set +f
+      run_ipset "${_ipset_arr[@]}" || bi "[WARN] ipset 命令失败"
+      continue
+    fi
 
     if [[ "$line" =~ ^ip[[:space:]]+ ]]; then
       arg="$(trim "${line#ip}")"
@@ -2201,6 +2584,8 @@ menu_standard() {
   bi ""
   bi "  50) [PERSIST] 固化/持久化中心"
   bi ""
+  bi "  60) [IPSET] ipset 管理（创建/批量封禁/应用到规则）"
+  bi ""
   bi "  90) 切换模式"
   bi "  0) 退出"
   bi ""
@@ -2228,6 +2613,7 @@ standard_loop() {
       33) run_action "清空链（-F）" flush_chain; pause ;;
       39) run_action "原始参数执行" raw_exec; pause ;;
       50) run_action "固化/持久化中心" persist_menu ;;
+      60) run_action "ipset 管理" ipset_menu ;;
       90) return 0 ;;
       *) bi "无效选项 / Invalid option" ;;
     esac
