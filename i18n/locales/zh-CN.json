@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "language": "zh-CN",
+    "language_name": "简体中文",
+    "version": "1.0.0",
+    "author": "维护者",
+    "last_updated": "2026-04-26"
+  },
+  "ui": {
+    "welcome": "欢迎使用 iptctl",
+    "select_mode": "请选择模式",
+    "beginner_mode": "新手模式",
+    "standard_mode": "标准模式",
+    "expert_mode": "专家模式",
+    "exit": "退出",
+    "back": "返回",
+    "confirm": "确认",
+    "cancel": "取消",
+    "yes": "是",
+    "no": "否",
+    "save": "保存",
+    "load": "加载",
+    "delete": "删除",
+    "edit": "编辑",
+    "view": "查看",
+    "search": "搜索",
+    "help": "帮助",
+    "settings": "设置",
+    "about": "关于"
+  },
+  "modes": {
+    "beginner_description": "安全菜单，强约束（防止误操作）",
+    "standard_description": "完整 iptables 功能菜单",
+    "expert_description": "REPL + 自然语言 DSL（无护栏）"
+  },
+  "messages": {
+    "success": "操作成功",
+    "error": "操作失败",
+    "warning": "警告",
+    "info": "信息",
+    "loading": "加载中...",
+    "processing": "处理中...",
+    "completed": "完成",
+    "failed": "失败",
+    "not_found": "未找到",
+    "access_denied": "访问被拒绝",
+    "invalid_input": "输入无效",
+    "connection_error": "连接错误",
+    "timeout": "超时"
+  },
+  "operations": {
+    "add_rule": "添加规则",
+    "delete_rule": "删除规则",
+    "list_rules": "列出规则",
+    "flush_rules": "清空规则",
+    "save_rules": "保存规则",
+    "load_rules": "加载规则",
+    "backup_rules": "备份规则",
+    "restore_rules": "恢复规则",
+    "search_rules": "搜索规则",
+    "persist_rules": "持久化规则"
+  },
+  "network": {
+    "ipv4": "IPv4",
+    "ipv6": "IPv6",
+    "dual_stack": "双栈",
+    "table": "表",
+    "chain": "链",
+    "protocol": "协议",
+    "source": "源",
+    "destination": "目标",
+    "port": "端口",
+    "interface": "接口",
+    "action": "动作",
+    "accept": "接受",
+    "drop": "丢弃",
+    "reject": "拒绝",
+    "log": "日志"
+  },
+  "backup": {
+    "create_backup": "创建备份",
+    "restore_backup": "恢复备份",
+    "list_backups": "列出备份",
+    "delete_backup": "删除备份",
+    "backup_created": "备份已创建: {0}",
+    "backup_restored": "备份已恢复: {0}",
+    "backup_deleted": "备份已删除: {0}",
+    "no_backups": "无可用备份"
+  },
+  "ipset": {
+    "create_set": "创建 ipset",
+    "delete_set": "删除 ipset",
+    "add_ip": "添加 IP 到集合",
+    "remove_ip": "从集合移除 IP",
+    "list_sets": "列出 ipset",
+    "show_set": "显示 ipset 内容",
+    "apply_set": "应用 ipset 到规则"
+  },
+  "persistence": {
+    "save_persistent": "保存到持久存储",
+    "load_persistent": "从持久存储加载",
+    "persistent_saved": "规则已持久化保存",
+    "persistent_loaded": "规则已从持久存储加载"
+  },
+  "errors": {
+    "command_not_found": "命令未找到: {0}",
+    "permission_denied": "权限被拒绝",
+    "invalid_argument": "参数无效: {0}",
+    "file_not_found": "文件未找到: {0}",
+    "directory_not_found": "目录未找到: {0}",
+    "insufficient_privileges": "权限不足",
+    "network_error": "网络错误",
+    "parse_error": "解析错误",
+    "validation_error": "验证错误",
+    "unknown_error": "未知错误"
+  },
+  "help": {
+    "description": "iptables/ip6tables 交互式管理脚本",
+    "usage": "用法: iptctl [选项]",
+    "options": "选项:",
+    "examples": "示例:",
+    "keyboard_shortcuts": "键盘快捷键:",
+    "more_info": "更多信息请查看 README.md"
+  },
+  "settings": {
+    "language": "语言",
+    "ui_style": "界面风格",
+    "auto": "自动",
+    "emoji": "表情符号",
+    "text": "文本",
+    "persist_mode": "持久化模式",
+    "backup_on_exit": "退出时备份",
+    "enable": "启用",
+    "disable": "禁用"
+  },
+  "confirmation": {
+    "are_you_sure": "确定吗？",
+    "confirm_delete": "确认删除",
+    "confirm_flush": "确认清空所有规则",
+    "confirm_exit": "确认退出",
+    "proceed": "继续",
+    "abort": "中止"
+  },
+  "status": {
+    "connected": "已连接",
+    "disconnected": "未连接",
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "active": "活跃",
+    "inactive": "不活跃",
+    "running": "运行中",
+    "stopped": "已停止"
+  }
+}

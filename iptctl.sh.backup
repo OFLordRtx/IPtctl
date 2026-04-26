@@ -22,48 +22,6 @@ export PATH="/usr/sbin:/sbin:${PATH:-/usr/bin:/bin}"
 # ---- UI style: auto / emoji / text
 UI_STYLE="${UI_STYLE:-auto}"
 
-# ---- Internationalization (i18n) support
-# 加载国际化函数库（仅 source，不立即初始化；等 config_load 后再初始化语言）
-IPTCTL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-I18N_FUNCTIONS="$IPTCTL_DIR/i18n/i18n_functions.sh"
-I18N_AVAILABLE=0
-
-if [[ -f "$I18N_FUNCTIONS" ]]; then
-    source "$I18N_FUNCTIONS"
-    I18N_AVAILABLE=1
-else
-    # 定义简单的回退函数（i18n 库不存在时使用）
-    t() {
-        echo "$1"
-    }
-    
-    t_printf() {
-        local key="$1"
-        shift
-        local format_string="$key"
-        
-        # 简单的参数替换
-        local i=0
-        for arg in "$@"; do
-            format_string="${format_string//\{$i\}/$arg}"
-            ((i++))
-        done
-        
-        echo "$format_string"
-    }
-fi
-
-# 国际化初始化函数（在 config_load 之后调用，确保 IPTCTL_LANG 已从配置文件读取）
-i18n_init_after_config() {
-    if [[ "$I18N_AVAILABLE" -eq 1 ]]; then
-        if ! init_i18n; then
-            echo "警告: 国际化初始化失败，继续使用默认语言" >&2
-        fi
-    else
-        echo "警告: 国际化函数库未找到，使用回退函数" >&2
-    fi
-}
-
 ui_autodetect_style() {
   # Heuristic only: can't truly detect font emoji support.
   local loc="${LC_ALL:-${LANG:-}}"
@@ -133,7 +91,6 @@ config_load() {
           UI_STYLE_PROMPT) UI_STYLE_PROMPT="$val" ;;
           EXIT_FILE_PROMPT) EXIT_FILE_PROMPT="$val" ;;
           EXIT_FILE_POLICY) EXIT_FILE_POLICY="$val" ;;
-          IPTCTL_LANG) IPTCTL_LANG="$val" ;;
         esac
       ;;
     esac
@@ -152,7 +109,6 @@ UI_STYLE=${UI_STYLE}
 UI_STYLE_PROMPT=${UI_STYLE_PROMPT}
 EXIT_FILE_PROMPT=${EXIT_FILE_PROMPT}
 EXIT_FILE_POLICY=${EXIT_FILE_POLICY}
-IPTCTL_LANG=${IPTCTL_LANG:-}
 EOF
 }
 
@@ -311,23 +267,7 @@ iptctl_exit() {
   exit "$code"
 }
 
-# bi: 输出一行消息，支持翻译键自动翻译
-# 若参数匹配 "section.key" 格式则尝试翻译；否则直接输出原文
-bi() {
-    local msg="$*"
-    local out="$msg"
-    
-    # 翻译键模式：小写字母、数字、下划线，中间用点号分隔（如 ui.welcome）
-    if [[ "$msg" =~ ^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$ ]]; then
-        local translated
-        translated="$(t "$msg")"
-        # 只有翻译结果与键不同时，才认为翻译成功
-        [[ "$translated" != "$msg" ]] && out="$translated"
-    fi
-    
-    ui_translate_line "$out"
-}
-
+bi(){ ui_translate_line "$*"; }
 LINE="────────────────────────────────────────────────────────────"
 
 # ---- sudo detection (portable)
@@ -1967,23 +1907,27 @@ select_mode() {
   while true; do
     bi ""
     bi "╔════════════════════════════════════════════════════════════╗"
-    bi "║                 iptctl · $(t "ui.welcome")                 ║"
+    bi "║                 iptctl · 三模式启动                        ║"
     bi "╚════════════════════════════════════════════════════════════╝"
-    bi "ui.select_mode"
+    bi "请选择使用模式 / Choose mode:"
     bi ""
-    bi "  1) $(t "ui.beginner_mode")"
-    bi "     $(t "modes.beginner_description")"
+    bi "  1) 初次接触（新手安全模式）"
+    bi "     - 只提供安全常用操作（看规则/放行端口/基础固化）"
+    bi "     - 默认锁定 filter/INPUT，隐藏删除/清空/原始执行"
+    bi "     - 提供小白说明 + 推荐流程向导"
     bi ""
-    bi "  2) $(t "ui.standard_mode")"
-    bi "     $(t "modes.standard_description")"
+    bi "  2) 熟练使用（完整控制台）"
+    bi "     - 全功能工程向（就是原版）"
     bi ""
-    bi "  3) $(t "ui.expert_mode")"
-    bi "     $(t "modes.expert_description")"
+    bi "  3) 专家模式（手打 + 自动补充 + DSL）"
+    bi "     - REPL 手打参数（支持历史/Tab）"
+    bi "     - 快捷：A/I/D/L/S/F"
+    bi "     - DSL：22/tcp allow、from 1.2.3.4 80,443/tcp allow 等"
     bi ""
-    bi "  0) $(t "ui.exit")"
+    bi "  0) 退出 / Exit"
     bi ""
     local c
-    c="$(read_num "$(t "ui.select_mode"): ")"
+    c="$(read_num "选择 / Choose: ")"
     case "$c" in
       0) iptctl_exit 0 ;;
       1) MODE="beginner"; return 0 ;;
@@ -2681,8 +2625,6 @@ standard_loop() {
 ###############################################################################
 main() {
   config_load
-  # config_load 完成后再初始化 i18n，确保 IPTCTL_LANG 已从配置文件读取
-  i18n_init_after_config
   ui_style_maybe_prompt
   while true; do
     select_mode
@@ -2694,6 +2636,5 @@ main() {
     esac
   done
 }
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-    main "$@"
-fi
+
+main
