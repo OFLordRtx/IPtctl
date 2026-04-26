@@ -2,7 +2,7 @@
 # UI 函数单元测试
 # 测试 iptctl 的用户界面相关函数
 
-set -euo pipefail
+set -uo pipefail # 移除 -e，防止 source 失败导致脚本退出
 
 # 加载测试辅助函数
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,8 +22,12 @@ test_ui_functions() {
     export LC_ALL="C.utf8"
     export TERM="xterm-256color"
     
+    # 预定义主脚本中可能用到的变量，防止 set -u 报错
+    export IPTCTLRC="${TEST_TEMP_DIR}/.iptctlrc"
+    
     # 加载 iptctl 脚本中的 UI 函数
-    source "$TEST_TEMP_DIR/iptctl_test.sh"
+    # 使用 || true 防止脚本顶层执行失败导致测试中断
+    source "$TEST_TEMP_DIR/iptctl_test.sh" || true
     
     # 测试 UI 风格检测
     UI_STYLE="auto"

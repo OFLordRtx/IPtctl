@@ -2,7 +2,7 @@
 # IPtctl 测试运行主脚本
 # 运行所有测试或指定测试
 
-set -euo pipefail
+set -uo pipefail # 移除 -e，允许测试失败后继续运行并打印总结
 
 # 脚本目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -84,7 +84,9 @@ run_single_test() {
     local output
     local exit_code=0
     
-    output=$(bash "$test_file" 2>&1) || exit_code=$?
+    # 运行测试脚本，捕获输出和退出码
+    output=$(bash "$test_file" 2>&1)
+    exit_code=$?
     
     ((TOTAL_TESTS++))
     
