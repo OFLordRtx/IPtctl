@@ -146,6 +146,10 @@ config_save() {
   local f="$CONFIG_FILE"
   local d="${f%/*}"
   [[ -n "$d" && "$d" != "$f" ]] && mkdir -p "$d" >/dev/null 2>&1 || true
+  
+  # 安全增强：限制配置文件权限
+  touch "$f"
+  chmod 600 "$f" >/dev/null 2>&1 || true
 
   cat > "$f" <<EOF
 # iptctl config
