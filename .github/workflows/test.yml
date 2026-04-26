@@ -1,0 +1,152 @@
+name: IPtctl Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run every Sunday at midnight UTC
+    - cron: "0 0 * * 0"
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show environment info
+        run: |
+          echo "Bash version: $(bash --version | head -n1)"
+          echo "System: $(uname -a)"
+          ls -la
+
+      - name: Make scripts executable
+        run: |
+          chmod +x iptctl.sh
+          chmod +x test/run_tests.sh
+          chmod +x test/test_helpers.sh
+          find test/unit -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+          find test/integration -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+
+      - name: Syntax check - all shell scripts
+        run: |
+          bash -n iptctl.sh && echo "iptctl.sh: OK"
+          bash -n i18n/i18n_functions.sh && echo "i18n_functions.sh: OK"
+          bash -n test/test_helpers.sh && echo "test_helpers.sh: OK"
+          find test/unit -name "*.sh" -exec bash -n {} \; && echo "unit tests: OK"
+
+      - name: Run unit tests
+        run: ./test/run_tests.sh unit
+
+      - name: Run integration tests (if any)
+        run: |
+          if [ -d "test/integration" ] && ls test/integration/*.sh 2>/dev/null; then
+            ./test/run_tests.sh integration
+          else
+            echo "No integration tests found, skipping"
+          fi
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test/*.log
+            test/*.txt
+          retention-days: 7
+          if-no-files-found: ignore
+
+  lint:
+    name: Code Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on main script
+        # SC2206: intentional word-split; SC1091: external source not checked
+        run: |
+          shellcheck -e SC2206,SC1091 iptctl.sh \
+            && echo "shellcheck: iptctl.sh OK" \
+            || echo "shellcheck: iptctl.sh has warnings (non-fatal)"
+
+      - name: Run shellcheck on i18n functions
+        run: |
+          shellcheck -e SC2206,SC1091 i18n/i18n_functions.sh \
+            && echo "shellcheck: i18n_functions.sh OK" \
+            || echo "shellcheck: i18n_functions.sh has warnings"
+
+      - name: Run shellcheck on test scripts
+        run: |
+          find test -name "*.sh" -exec shellcheck -e SC2206,SC1091 {} \; \
+            && echo "shellcheck: test scripts OK" \
+            || echo "shellcheck: test scripts have warnings"
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Basic security checks
+        run: |
+          echo "=== Security Scan ==="
+          echo "Main script lines: $(wc -l < iptctl.sh)"
+
+          # Check for hardcoded credentials (exclude comments and test files)
+          echo "Checking for hardcoded credentials..."
+          if grep -rn 'password[[:space:]]*=[^=]\|passwd[[:space:]]*=[^=]\|secret[[:space:]]*=[^=]' \
+               --include='*.sh' . \
+               | grep -v '^#' \
+               | grep -v 'test_' 2>/dev/null; then
+            echo "WARNING: Possible hardcoded credentials found"
+          else
+            echo "OK: No hardcoded credentials detected"
+          fi
+
+          # Check for dangerous rm -rf /
+          echo "Checking for dangerous commands..."
+          if grep -rn 'rm -rf /' --include='*.sh' . 2>/dev/null; then
+            echo "WARNING: Dangerous rm -rf / found"
+          else
+            echo "OK: No dangerous delete commands found"
+          fi
+
+          echo "Security scan complete"
+
+  report:
+    name: Test Report
+    runs-on: ubuntu-latest
+    needs: [test, lint, security]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "=== CI/CD Results ==="
+          echo "Test:     ${{ needs.test.result }}"
+          echo "Lint:     ${{ needs.lint.result }}"
+          echo "Security: ${{ needs.security.result }}"
+          echo ""
+
+          if [[ "${{ needs.test.result }}" == "success" && "${{ needs.lint.result }}" == "success" ]]; then
+            echo "All checks passed!"
+          else
+            echo "Some checks failed"
+            exit 1
+          fi

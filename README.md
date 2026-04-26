@@ -53,6 +53,7 @@ iptctl
 ## 功能列表 / Features
 
 ### 核心规则操作
+
 - IPv4 / IPv6 / 双栈（同时操作 iptables + ip6tables）
 - backend 选择：auto / nft / legacy（自动探测，也可手动锁定）
 - 任意 table / chain（新手模式锁定 filter/INPUT）
@@ -63,19 +64,30 @@ iptctl
 - 清空链：`-F`，带多级确认
 - 搜索规则：按端口号/IP 地址/任意关键字过滤 `-L` 输出
 - 原始参数执行（Standard/Expert）
+- **国际化支持 (i18n)**：支持中英文切换，自动检测系统语言
+
+### 质量与安全
+
+- **自动化测试**：完整的单元测试套件，确保核心逻辑稳定性
+- **性能基准测试**：提供规则处理速度和内存占用指标
+- **安全审计**：完善的 SECURITY.md 和 CVE 跟踪机制
+- **版本管理**：遵循语义化版本，记录详细的 CHANGELOG.md
 
 ### 固化 / 持久化
+
 - 三种方式：`netfilter-persistent`（Debian/Ubuntu）/ `iptables-services`（RHEL）/ systemd unit
 - 自动检测并按优先级选择；也可手动指定方式
 - 自动安装缺失的持久化工具（apt-get / dnf / yum）
 - 改动后策略：off / prompt（每次询问）/ auto（静默保存）
 
 ### 备份与回滚
+
 - 会话级备份：每次破坏性操作前可选备份，记录当次会话生成的文件
 - 退出时可选保留或清理本次备份
 - 备份目录：root → `/var/backups/iptctl`；普通用户 → `./iptctl-backups`
 
 ### ipset 集合管理
+
 - 检测 / 一键安装 ipset（apt-get / dnf / yum）
 - 创建 set（hash:ip / hash:net / hash:ip,port 等）
 - 添加 / 删除单个 IP 或 CIDR
@@ -85,6 +97,7 @@ iptctl
 - 新手模式：一键封禁列表（固定 set `iptctl-ban`，简化操作）
 
 ### 专家 DSL
+
 - 口语化规则表达式，自动翻译为 iptables 参数
 - `from` / `to` / `insert` / `on <iface>` 修饰符任意组合
 - 动作：allow / accept / drop / deny / reject / log
@@ -94,6 +107,7 @@ iptctl
 - 行尾 `# 注释` 自动转为 `-m comment`
 
 ### 其他
+
 - 纯 Bash 实现，**不依赖** grep/sed/awk/xargs/tr（仅依赖 bash + iptables）
 - UI 风格自适应：emoji / text（SSH 无 UTF-8 时降级）
 - 配置文件持久化（`~/.iptctlrc`）：UI 风格、退出策略等
@@ -151,6 +165,7 @@ iptctl
 REPL 直通，无确认护栏。输入就执行，适合熟练用户。
 
 **支持三类输入：**
+
 1. **Raw iptables 参数**（脚本自动补 `-t TABLE`）
 2. **快捷补全**（行首单字母展开）
 3. **口语 DSL**（见下节完整语法表）
@@ -171,28 +186,28 @@ DSL 匹配优先于快捷补全，未匹配则作为原始参数传入。
 
 ### 端口 / 协议 / 动作
 
-| 输入示例 | 等价 iptables 参数 |
-|----------|-------------------|
-| `22/tcp allow` | `-A CHAIN -p tcp --dport 22 -j ACCEPT` |
-| `allow 22/tcp` | 同上（词序颠倒） |
-| `53/udp drop` | `-A CHAIN -p udp --dport 53 -j DROP` |
-| `443/tcp reject` | `-A CHAIN -p tcp --dport 443 -j REJECT` |
-| `22/tcp log` | `-A CHAIN -p tcp --dport 22 -j LOG --log-prefix iptctl:` |
-| `80,443/tcp allow` | `-A CHAIN -p tcp -m multiport --dports 80,443 -j ACCEPT` |
-| `1000-2000/udp allow` | `-A CHAIN -p udp --dport 1000:2000 -j ACCEPT` |
+| 输入示例              | 等价 iptables 参数                                       |
+| --------------------- | -------------------------------------------------------- |
+| `22/tcp allow`        | `-A CHAIN -p tcp --dport 22 -j ACCEPT`                   |
+| `allow 22/tcp`        | 同上（词序颠倒）                                         |
+| `53/udp drop`         | `-A CHAIN -p udp --dport 53 -j DROP`                     |
+| `443/tcp reject`      | `-A CHAIN -p tcp --dport 443 -j REJECT`                  |
+| `22/tcp log`          | `-A CHAIN -p tcp --dport 22 -j LOG --log-prefix iptctl:` |
+| `80,443/tcp allow`    | `-A CHAIN -p tcp -m multiport --dports 80,443 -j ACCEPT` |
+| `1000-2000/udp allow` | `-A CHAIN -p udp --dport 1000:2000 -j ACCEPT`            |
 
 > 动作关键字：`allow` = `accept`，`drop` = `deny`
 
 ### 修饰前缀/后缀
 
-| 修饰词 | 效果 | 示例 |
-|--------|------|------|
-| `insert <...>` | 用 `-I CHAIN 1`（插入链首） | `insert 22/tcp allow` |
-| `from <ip/cidr>` | 添加 `-s` 源地址过滤 | `from 1.2.3.4 22/tcp allow` |
-| `to <ip/cidr>` | 添加 `-d` 目标地址过滤 | `to 10.0.0.1 80/tcp allow` |
-| `from <ip> to <ip>` | 同时过滤源和目标 | `from 1.2.3.4 to 10.0.0.1 22/tcp allow` |
-| `<...> on <iface>` | 添加 `-i <iface>` 接口绑定 | `22/tcp allow on eth0` |
-| `<...> # <text>` | 添加 `-m comment --comment "<text>"` | `22/tcp allow # Allow SSH` |
+| 修饰词              | 效果                                 | 示例                                    |
+| ------------------- | ------------------------------------ | --------------------------------------- |
+| `insert <...>`      | 用 `-I CHAIN 1`（插入链首）          | `insert 22/tcp allow`                   |
+| `from <ip/cidr>`    | 添加 `-s` 源地址过滤                 | `from 1.2.3.4 22/tcp allow`             |
+| `to <ip/cidr>`      | 添加 `-d` 目标地址过滤               | `to 10.0.0.1 80/tcp allow`              |
+| `from <ip> to <ip>` | 同时过滤源和目标                     | `from 1.2.3.4 to 10.0.0.1 22/tcp allow` |
+| `<...> on <iface>`  | 添加 `-i <iface>` 接口绑定           | `22/tcp allow on eth0`                  |
+| `<...> # <text>`    | 添加 `-m comment --comment "<text>"` | `22/tcp allow # Allow SSH`              |
 
 ### 组合示例
 
@@ -209,27 +224,27 @@ from 10.0.0.0/8 80,443/tcp allow # internal web
 
 ### REPL 内置命令
 
-| 命令 | 功能 |
-|------|------|
-| `block <ip>` / `block from <ip>` | 封禁 IP（自动识别 v4/v6，追加 DROP 规则） |
-| `unblock <ip>` | 解封 IP（删除对应 DROP 规则） |
-| `policy ACCEPT\|DROP` | 设置当前链默认策略 |
-| `show` | 显示当前 IP_MODE / TABLE / CHAIN 等上下文 |
-| `ip 4\|6\|46` | 切换 IP_MODE |
-| `backend auto\|nft\|legacy` | 切换 backend |
-| `table <name>` | 切换 TABLE |
-| `chain <name>` | 切换 CHAIN |
-| `persist` | 立即固化当前规则 |
-| `backup` | 备份当前规则到文件 |
-| `search` | 搜索规则（交互输入关键字） |
-| `ipset` | 进入 ipset 完整管理菜单 |
-| `ipset <args>` | 直通 ipset 子命令（如 `ipset list myban`） |
-| `L` | `-L CHAIN -n -v --line-numbers` |
-| `S` | `-S CHAIN` |
-| `F` | `-F CHAIN` |
-| `A <...>` / `I <...>` / `D <...>` | 展开为 `-A` / `-I` / `-D` |
-| `help` | 显示帮助 |
-| `exit` | 退出专家模式 |
+| 命令                              | 功能                                       |
+| --------------------------------- | ------------------------------------------ |
+| `block <ip>` / `block from <ip>`  | 封禁 IP（自动识别 v4/v6，追加 DROP 规则）  |
+| `unblock <ip>`                    | 解封 IP（删除对应 DROP 规则）              |
+| `policy ACCEPT\|DROP`             | 设置当前链默认策略                         |
+| `show`                            | 显示当前 IP_MODE / TABLE / CHAIN 等上下文  |
+| `ip 4\|6\|46`                     | 切换 IP_MODE                               |
+| `backend auto\|nft\|legacy`       | 切换 backend                               |
+| `table <name>`                    | 切换 TABLE                                 |
+| `chain <name>`                    | 切换 CHAIN                                 |
+| `persist`                         | 立即固化当前规则                           |
+| `backup`                          | 备份当前规则到文件                         |
+| `search`                          | 搜索规则（交互输入关键字）                 |
+| `ipset`                           | 进入 ipset 完整管理菜单                    |
+| `ipset <args>`                    | 直通 ipset 子命令（如 `ipset list myban`） |
+| `L`                               | `-L CHAIN -n -v --line-numbers`            |
+| `S`                               | `-S CHAIN`                                 |
+| `F`                               | `-F CHAIN`                                 |
+| `A <...>` / `I <...>` / `D <...>` | 展开为 `-A` / `-I` / `-D`                  |
+| `help`                            | 显示帮助                                   |
+| `exit`                            | 退出专家模式                               |
 
 ---
 
@@ -276,11 +291,11 @@ WantedBy=multi-user.target
 
 通过"固化/持久化中心"（菜单 50）可设置 `PERSIST_AFTER_CHANGE`：
 
-| 值 | 行为 |
-|----|------|
-| `off`（默认） | 不自动固化 |
-| `prompt` | 每次规则变更后询问 |
-| `auto` | 静默自动固化 |
+| 值            | 行为               |
+| ------------- | ------------------ |
+| `off`（默认） | 不自动固化         |
+| `prompt`      | 每次规则变更后询问 |
+| `auto`        | 静默自动固化       |
 
 ---
 
@@ -300,10 +315,11 @@ EXIT_FILE_POLICY=keep    # keep | cleanup（退出备份策略）
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `IPTCTLRC` | 配置文件路径 | `~/.iptctlrc` |
-| `UI_STYLE` | 显示风格：`auto` / `emoji` / `text` | `auto` |
+| 变量          | 说明                                | 默认值        |
+| ------------- | ----------------------------------- | ------------- |
+| `IPTCTLRC`    | 配置文件路径                        | `~/.iptctlrc` |
+| `UI_STYLE`    | 显示风格：`auto` / `emoji` / `text` | `auto`        |
+| `IPTCTL_LANG` | 语言设置：`en` / `zh-CN`            | 自动检测      |
 
 `UI_STYLE=text` 会将 emoji 替换为 `[OK]` / `[FAIL]` / `[WARN]` 等 ASCII 标签，适合无 UTF-8 的 SSH 终端。
 
@@ -337,12 +353,12 @@ bash <(curl -Ls https://raw.githubusercontent.com/OFLordRtx/IPtctl/main/iptctl.s
 
 ### 依赖
 
-| 依赖 | 必需 | 说明 |
-|------|------|------|
-| `bash` 5+ | ✅ | 使用了 nameref / `%(%T)T` 等特性 |
-| `iptables` / `ip6tables` | ✅ | nft 或 legacy 均可 |
-| `sudo` | 非 root 时需要 | 普通用户须有 sudo 权限 |
-| `ipset` | 可选 | ipset 功能需要；脚本可自动安装 |
+| 依赖                     | 必需           | 说明                             |
+| ------------------------ | -------------- | -------------------------------- |
+| `bash` 5+                | ✅             | 使用了 nameref / `%(%T)T` 等特性 |
+| `iptables` / `ip6tables` | ✅             | nft 或 legacy 均可               |
+| `sudo`                   | 非 root 时需要 | 普通用户须有 sudo 权限           |
+| `ipset`                  | 可选           | ipset 功能需要；脚本可自动安装   |
 
 ---
 
@@ -391,6 +407,7 @@ modprobe ip_set
 
 Docker 和一些管理面板会在启动时写入自己的 iptables 规则，可能覆盖你的配置。
 常见处理方式：
+
 1. 将你的规则插入 `DOCKER-USER` 链（Docker 不会动这条链）
 2. 或在面板/Docker 启动后再执行 `netfilter-persistent reload`
 
