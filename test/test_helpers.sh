@@ -2,9 +2,7 @@
 # IPtctl 测试辅助函数库
 # 提供断言、模拟、环境设置等测试工具
 
-set -euo pipefail
-
-# 颜色输出
+set -uo pipefail # 移除 -e，由辅助函数内部处理错误逻辑
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
