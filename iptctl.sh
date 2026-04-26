@@ -16,6 +16,8 @@ set -o pipefail
 #   3) Expert    专家模式：手打 REPL + 自动补充快捷写法 + 历史/Tab + 口语 DSL（无护栏）
 ###############################################################################
 
+VERSION="1.0.0"
+
 # ---- Make sure sbin is in PATH (common portability pitfall)
 export PATH="/usr/sbin:/sbin:${PATH:-/usr/bin:/bin}"
 
