@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "language": "en",
+    "language_name": "English",
+    "version": "1.0.0",
+    "author": "Maintainer",
+    "last_updated": "2026-04-26"
+  },
+  "ui": {
+    "welcome": "Welcome to iptctl",
+    "select_mode": "Please select mode",
+    "beginner_mode": "Beginner Mode",
+    "standard_mode": "Standard Mode",
+    "expert_mode": "Expert Mode",
+    "exit": "Exit",
+    "back": "Back",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "no": "No",
+    "save": "Save",
+    "load": "Load",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "help": "Help",
+    "settings": "Settings",
+    "about": "About"
+  },
+  "modes": {
+    "beginner_description": "Safe menu with strong constraints (prevents mistakes)",
+    "standard_description": "Full iptables functionality menu",
+    "expert_description": "REPL + natural language DSL (no guardrails)"
+  },
+  "messages": {
+    "success": "Operation successful",
+    "error": "Operation failed",
+    "warning": "Warning",
+    "info": "Information",
+    "loading": "Loading...",
+    "processing": "Processing...",
+    "completed": "Completed",
+    "failed": "Failed",
+    "not_found": "Not found",
+    "access_denied": "Access denied",
+    "invalid_input": "Invalid input",
+    "connection_error": "Connection error",
+    "timeout": "Timeout"
+  },
+  "operations": {
+    "add_rule": "Add rule",
+    "delete_rule": "Delete rule",
+    "list_rules": "List rules",
+    "flush_rules": "Flush rules",
+    "save_rules": "Save rules",
+    "load_rules": "Load rules",
+    "backup_rules": "Backup rules",
+    "restore_rules": "Restore rules",
+    "search_rules": "Search rules",
+    "persist_rules": "Persist rules"
+  },
+  "network": {
+    "ipv4": "IPv4",
+    "ipv6": "IPv6",
+    "dual_stack": "Dual stack",
+    "table": "Table",
+    "chain": "Chain",
+    "protocol": "Protocol",
+    "source": "Source",
+    "destination": "Destination",
+    "port": "Port",
+    "interface": "Interface",
+    "action": "Action",
+    "accept": "Accept",
+    "drop": "Drop",
+    "reject": "Reject",
+    "log": "Log"
+  },
+  "backup": {
+    "create_backup": "Create backup",
+    "restore_backup": "Restore backup",
+    "list_backups": "List backups",
+    "delete_backup": "Delete backup",
+    "backup_created": "Backup created: {0}",
+    "backup_restored": "Backup restored: {0}",
+    "backup_deleted": "Backup deleted: {0}",
+    "no_backups": "No backups available"
+  },
+  "ipset": {
+    "create_set": "Create ipset",
+    "delete_set": "Delete ipset",
+    "add_ip": "Add IP to set",
+    "remove_ip": "Remove IP from set",
+    "list_sets": "List ipsets",
+    "show_set": "Show ipset contents",
+    "apply_set": "Apply ipset to rules"
+  },
+  "persistence": {
+    "save_persistent": "Save to persistent storage",
+    "load_persistent": "Load from persistent storage",
+    "persistent_saved": "Rules saved persistently",
+    "persistent_loaded": "Rules loaded from persistent storage"
+  },
+  "errors": {
+    "command_not_found": "Command not found: {0}",
+    "permission_denied": "Permission denied",
+    "invalid_argument": "Invalid argument: {0}",
+    "file_not_found": "File not found: {0}",
+    "directory_not_found": "Directory not found: {0}",
+    "insufficient_privileges": "Insufficient privileges",
+    "network_error": "Network error",
+    "parse_error": "Parse error",
+    "validation_error": "Validation error",
+    "unknown_error": "Unknown error"
+  },
+  "help": {
+    "description": "Interactive iptables/ip6tables management script",
+    "usage": "Usage: iptctl [OPTIONS]",
+    "options": "Options:",
+    "examples": "Examples:",
+    "keyboard_shortcuts": "Keyboard shortcuts:",
+    "more_info": "For more information, see README.md"
+  },
+  "settings": {
+    "language": "Language",
+    "ui_style": "UI Style",
+    "auto": "Auto",
+    "emoji": "Emoji",
+    "text": "Text",
+    "persist_mode": "Persist mode",
+    "backup_on_exit": "Backup on exit",
+    "enable": "Enable",
+    "disable": "Disable"
+  },
+  "confirmation": {
+    "are_you_sure": "Are you sure?",
+    "confirm_delete": "Confirm deletion",
+    "confirm_flush": "Confirm flush all rules",
+    "confirm_exit": "Confirm exit",
+    "proceed": "Proceed",
+    "abort": "Abort"
+  },
+  "status": {
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "active": "Active",
+    "inactive": "Inactive",
+    "running": "Running",
+    "stopped": "Stopped"
+  }
+}
