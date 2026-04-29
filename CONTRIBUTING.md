@@ -245,5 +245,6 @@ test_example_function() {
 - GitHub Issues: 问题讨论
 - Pull Requests: 代码贡献
 - 项目维护者: @OFMeteoriteH
+- AI 贡献者: @Claude, @Gemini
 
 感谢您的贡献！

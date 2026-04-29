@@ -90,7 +90,9 @@ git checkout v1.2.3
 ## 维护者
 
 - @OFMeteoriteH
+- @Claude (AI)
+- @Gemini (AI)
 
 ## 许可证
 
-MIT © 2026
+MIT © OFMeteoriteH 2026
