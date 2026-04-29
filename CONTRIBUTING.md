@@ -12,7 +12,7 @@
 ### 1. 克隆仓库
 
 ```bash
-git clone https://github.com/OFLordRtx/IPtctl.git
+git clone https://github.com/OFMeteoriteH/IPtctl.git
 cd IPtctl
 ```
 
@@ -244,6 +244,6 @@ test_example_function() {
 
 - GitHub Issues: 问题讨论
 - Pull Requests: 代码贡献
-- 项目维护者: @OFLordRtx
+- 项目维护者: @OFMeteoriteH
 
 感谢您的贡献！

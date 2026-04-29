@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Shell: Bash](https://img.shields.io/badge/Shell-Bash%205%2B-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux&logoColor=black)](https://kernel.org)
-[![Status: Active](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/OFLordRtx/IPtctl/commits/main)
+[![Status: Active](https://img.shields.io/badge/Status-Active-brightgreen)](https://github.com/OFMeteoriteH/IPtctl/commits/main)
 
 ---
 
@@ -330,7 +330,7 @@ EXIT_FILE_POLICY=keep    # keep | cleanup（退出备份策略）
 ### 方式一：克隆仓库
 
 ```bash
-git clone https://github.com/OFLordRtx/IPtctl.git
+git clone https://github.com/OFMeteoriteH/IPtctl.git
 cd IPtctl
 chmod +x iptctl.sh
 ./iptctl.sh
@@ -340,7 +340,7 @@ chmod +x iptctl.sh
 
 ```bash
 curl -L -o iptctl.sh \
-  https://raw.githubusercontent.com/OFLordRtx/IPtctl/main/iptctl.sh
+  https://raw.githubusercontent.com/OFMeteoriteH/IPtctl/main/iptctl.sh
 chmod +x iptctl.sh
 sudo ./iptctl.sh
 ```
@@ -348,7 +348,7 @@ sudo ./iptctl.sh
 ### 方式三：直接管道执行（不落盘）
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/OFLordRtx/IPtctl/main/iptctl.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/OFMeteoriteH/IPtctl/main/iptctl.sh)
 ```
 
 ### 依赖
@@ -432,4 +432,4 @@ shellcheck iptctl.sh # 建议无 warning（SC2206 除外，word-split 是有意�
 
 ## License
 
-MIT © OFLordRtx — 详见 [LICENSE](LICENSE)
+MIT © OFMeteoriteH — 详见 [LICENSE](LICENSE)

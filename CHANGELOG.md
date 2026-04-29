@@ -66,7 +66,7 @@
 
 ```bash
 # 下载最新版本
-wget https://github.com/OFLordRtx/IPtctl/releases/latest/download/iptctl.sh
+wget https://github.com/OFMeteoriteH/IPtctl/releases/latest/download/iptctl.sh
 chmod +x iptctl.sh
 sudo ./iptctl.sh
 ```
@@ -89,7 +89,7 @@ git checkout v1.2.3
 
 ## 维护者
 
-- @OFLordRtx
+- @OFMeteoriteH
 
 ## 许可证
 
