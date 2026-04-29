@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-set -u
-set -o pipefail
+set -euo pipefail
 
 ###############################################################################
 # iptctl - Universal iptables interactive console (3-mode edition + DSL)
@@ -55,7 +54,7 @@ else
     }
 fi
 
-# 国际化初始化函数（在 config_load 之后调用，确保 IPTCTL_LANG 已从配置文件读取）
+# 国际化初始化函数 / Initialize i18n (called after config_load to ensure IPTCTL_LANG is set)
 i18n_init_after_config() {
     if [[ "$I18N_AVAILABLE" -eq 1 ]]; then
         if ! init_i18n; then
@@ -66,6 +65,7 @@ i18n_init_after_config() {
     fi
 }
 
+# 自动检测 UI 风格 / Auto-detect UI style (auto/emoji/text)
 ui_autodetect_style() {
   # Heuristic only: can't truly detect font emoji support.
   local loc="${LC_ALL:-${LANG:-}}"
@@ -82,6 +82,7 @@ ui_autodetect_style() {
   return 0
 }
 
+# 翻译并输出一行 UI 文本 / Translate and print a line of UI text
 ui_translate_line() {
   local s="${1-}"
 
@@ -115,6 +116,7 @@ ui_translate_line() {
 ###############################################################################
 # Config load/save (~/.iptctlrc) - pure bash, no sed/awk/grep required
 ###############################################################################
+# 加载配置文件 / Load configuration from ~/.iptctlrc
 config_load() {
   local f="$CONFIG_FILE"
   [[ -f "$f" ]] || return 0
@@ -142,6 +144,7 @@ config_load() {
   done < "$f"
 }
 
+# 保存配置文件 / Save configuration to ~/.iptctlrc
 config_save() {
   local f="$CONFIG_FILE"
   local d="${f%/*}"
@@ -165,6 +168,7 @@ EOF
 ###############################################################################
 # First-run UI style prompt (auto/emoji/text) + "don't ask again" (confirm once)
 ###############################################################################
+# 首次运行提示选择 UI 风格 / Prompt for UI style on first run
 ui_style_maybe_prompt() {
   # If config file doesn't exist AND UI_STYLE_PROMPT is on, prompt once.
   [[ "$UI_STYLE_PROMPT" == "off" ]] && return 0
@@ -214,6 +218,7 @@ ui_style_maybe_prompt() {
 ###############################################################################
 # Exit retention prompt: keep/cleanup session backups + "don't ask again"
 ###############################################################################
+# 删除路径（支持 sudo） / Remove a path (supports sudo)
 rm_path() {
   # remove a path using sudo if needed
   local p="$1"
@@ -226,6 +231,7 @@ rm_path() {
   fi
 }
 
+# 如果目录为空则删除 / Remove directory if it is empty
 rmdir_if_empty() {
   local d="$1"
   if [[ "${EUID:-99999}" -eq 0 ]]; then
@@ -237,6 +243,7 @@ rmdir_if_empty() {
   fi
 }
 
+# 清理本次会话生成的备份 / Cleanup backups generated in this session
 cleanup_session_backups() {
   local f
   for f in "${SESSION_BACKUP_FILES[@]}"; do
@@ -248,6 +255,7 @@ cleanup_session_backups() {
   done
 }
 
+# 应用退出时的备份保留策略 / Apply exit retention policy for backups
 exit_retention_apply_policy() {
   case "$EXIT_FILE_POLICY" in
     keep) return 0 ;;
@@ -256,6 +264,7 @@ exit_retention_apply_policy() {
   esac
 }
 
+# 退出时提示是否保留备份 / Prompt for backup retention on exit
 exit_retention_prompt() {
   # if no backups created this run, skip
   if (( ${#SESSION_BACKUP_FILES[@]} == 0 )); then
@@ -310,6 +319,7 @@ exit_retention_prompt() {
   return 0
 }
 
+# 退出脚本 / Exit the script
 iptctl_exit() {
   local code="${1:-0}"
   # if user cancels exit, return to caller
@@ -319,6 +329,7 @@ iptctl_exit() {
 
 # bi: 输出一行消息，支持翻译键自动翻译
 # 若参数匹配 "section.key" 格式则尝试翻译；否则直接输出原文
+# 输出一行消息（支持 i18n 键） / Print a line of message (supports i18n keys)
 bi() {
     local msg="$*"
     local out="$msg"
@@ -352,6 +363,7 @@ pause() {
 }
 
 # ---- Pure-bash trim (no xargs/sed)
+# 去除字符串首尾空格 / Trim leading and trailing whitespace
 trim() {
   local s="${1-}"
   # leading
@@ -428,8 +440,20 @@ run_action() {
 }
 
 ###############################################################################
-# Runtime context
+# System Paths & Runtime context
 ###############################################################################
+# ---- System Paths (Linux)
+SYSCONFIG_DIR="/etc/sysconfig"
+SYSCONFIG_V4="$SYSCONFIG_DIR/iptables"
+SYSCONFIG_V6="$SYSCONFIG_DIR/ip6tables"
+IPTCTL_CONFIG_DIR="/etc/iptctl"
+IPTCTL_V4="$IPTCTL_CONFIG_DIR/rules.v4"
+IPTCTL_V6="$IPTCTL_CONFIG_DIR/rules.v6"
+SYSTEMD_UNIT_DIR="/etc/systemd/system"
+IPTCTL_SERVICE="$SYSTEMD_UNIT_DIR/iptctl-restore.service"
+VAR_BACKUP_DIR="/var/backups/iptctl"
+
+# ---- Runtime context
 IP_MODE="4"          # 4 / 6 / 46
 BACKEND="auto"       # auto / nft / legacy
 TABLE="filter"
@@ -659,7 +683,7 @@ backup_pick_dir() {
   # Prefer system backup dir when root/sudo is available; fallback to current dir
   local d=""
   if [[ "${EUID:-99999}" -eq 0 || -n "$SUDO" ]]; then
-    d="/var/backups/iptctl"
+    d="$VAR_BACKUP_DIR"
   else
     d="./iptctl-backups"
   fi
@@ -883,11 +907,11 @@ destructive_guard() {
 persist_detect_netfilter_persistent() { cmd_exists netfilter-persistent; }
 
 persist_detect_iptables_services() {
-  [[ -d /etc/sysconfig ]] && cmd_exists systemctl
+  [[ -d "$SYSCONFIG_DIR" ]] && cmd_exists systemctl
 }
 
 persist_detect_systemd() {
-  cmd_exists systemctl && [[ -d /etc/systemd/system ]]
+  cmd_exists systemctl && [[ -d "$SYSTEMD_UNIT_DIR" ]]
 }
 
 persist_print_status() {
@@ -971,8 +995,8 @@ persist_apply_iptables_services() {
     persist_install_iptables_services || return 1
   fi
 
-  local v4="/etc/sysconfig/iptables"
-  local v6="/etc/sysconfig/ip6tables"
+  local v4="$SYSCONFIG_V4"
+  local v6="$SYSCONFIG_V6"
 
   local SAVE4 SAVE6
   SAVE4="$(ipt_save_cmd_for 4)" || { bi "[FAIL] 缺少 iptables-save"; return 1; }
@@ -1006,14 +1030,14 @@ persist_apply_iptables_services() {
 persist_apply_systemd() {
   need_root_or_sudo || return 1
   if ! persist_detect_systemd; then
-    bi "[FAIL] systemd 方案不可用（缺少 systemctl 或 /etc/systemd/system）"
+    bi "[FAIL] systemd 方案不可用（缺少 systemctl 或 $SYSTEMD_UNIT_DIR）"
     return 1
   fi
 
-  local dir="/etc/iptctl"
-  local v4="${dir}/rules.v4"
-  local v6="${dir}/rules.v6"
-  local unit="/etc/systemd/system/iptctl-restore.service"
+  local dir="$IPTCTL_CONFIG_DIR"
+  local v4="$IPTCTL_V4"
+  local v6="$IPTCTL_V6"
+  local unit="$IPTCTL_SERVICE"
 
   local SAVE4 SAVE6 REST4 REST6
   SAVE4="$(ipt_save_cmd_for 4)" || { bi "[FAIL] 缺少 iptables-save"; return 1; }
@@ -1063,18 +1087,22 @@ persist_apply_systemd() {
   ${SUDO} tee "$unit" >/dev/null <<EOF
 [Unit]
 Description=iptctl restore iptables rules
+# 禁用默认依赖以确保尽早运行 / Disable default dependencies to ensure early execution
 DefaultDependencies=no
+# 在网络接口启动前恢复规则 / Restore rules before network interfaces are up
 Before=network-pre.target
 Wants=network-pre.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+# 执行 IPv4 恢复 / Execute IPv4 restore
 ExecStart=${REST4_BIN} ${v4}
 EOF
 
   if [[ -n "${REST6_BIN:-}" && -n "$SAVE6" ]]; then
     ${SUDO} tee -a "$unit" >/dev/null <<EOF
+# 执行 IPv6 恢复 / Execute IPv6 restore
 ExecStart=${REST6_BIN} ${v6}
 EOF
   fi
